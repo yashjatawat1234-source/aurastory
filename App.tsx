@@ -51,11 +51,10 @@ export default function App() {
   const [activeSceneId, setActiveSceneId] = useState<string>('sc-1')
 
   const [storyCanvas, setStoryCanvas] = useState<string>(() => {
-    return (
-      chapters[0]?.scenes[0]?.content ||
-      'The neon lights flickered across the wet pavement as the signal dropped.'
-    )
-  })
+  return (
+    chapters[0]?.scenes[0]?.content || ''
+  )
+})
 
   const [scratchpadText, setScratchpadText] = useState<string>(() => {
     return (
@@ -416,10 +415,11 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
               </button>
             </div>
             <textarea
-              value={scratchpadText}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setScratchpadText(e.target.value)}
-              className="w-full h-32 bg-slate-950 text-purple-200 p-3 rounded-lg border border-purple-900/60 font-mono text-xs focus:outline-none"
-            />
+  value={storyCanvas}
+  onChange={(e) => setStoryCanvas(e.target.value)}
+  placeholder="The neon lights flickered across the wet pavement as the signal dropped."
+  className="..." // keep your existing className styles
+/>
           </div>
         )}
 
@@ -498,11 +498,11 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
             Active Scene Canvas
           </h2>
           <textarea
-            value={storyCanvas}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setStoryCanvas(e.target.value)}
-            className="w-full h-72 bg-slate-950 text-slate-100 p-4 rounded-lg border border-slate-800 focus:outline-none focus:border-emerald-500 font-mono text-sm leading-relaxed"
-            placeholder="Write your scene here..."
-          />
+  value={storyCanvas}
+  onChange={(e) => setStoryCanvas(e.target.value)}
+  placeholder="The neon lights flickered across the wet pavement as the signal dropped."
+  className="w-full h-64 bg-transparent text-slate-100 placeholder:text-slate-500 outline-none resize-none"
+/>
         </div>
       </main>
     </div>
