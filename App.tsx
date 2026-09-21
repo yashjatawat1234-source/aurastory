@@ -50,11 +50,7 @@ export default function App() {
 
   const [activeSceneId, setActiveSceneId] = useState<string>('sc-1')
 
-  const [storyCanvas, setStoryCanvas] = useState<string>(() => {
-  return (
-    chapters[0]?.scenes[0]?.content || ''
-  )
-})
+  const [storyCanvas, setStoryCanvas] = useState<string>('')
 
   const [scratchpadText, setScratchpadText] = useState<string>(() => {
     return (
