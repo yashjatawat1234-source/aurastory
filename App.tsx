@@ -27,47 +27,63 @@ export default function App() {
     return saved
       ? JSON.parse(saved)
       : [
-          {
-            id: 'ch-1',
-            title: 'Chapter 1: The Signal Drops',
-            scenes: [
-              {
-                id: 'sc-1',
-                title: 'Scene 1: Rooftop Chase',
-                content:
-                  'The neon lights flickered across the wet pavement as the signal dropped. Elena Vance clutched the drive tightly.',
-              },
-              {
-                id: 'sc-2',
-                title: 'Scene 2: Encrypted Alleyway',
-                content:
-                  'Rain heavy-poured into the alleyway. Jack stepped out from the shadows, holding a cipher medallion.',
-              },
-            ],
-          },
-        ]
+        {
+          id: 'ch-1',
+          title: 'Chapter 1: The Signal Drops',
+          scenes: [
+            {
+              id: 'sc-1',
+              title: 'Scene 1: Rooftop Chase',
+              content:
+                'The neon lights flickered across the wet pavement as the signal dropped. Elena Vance clutched the drive tightly.',
+            },
+            {
+              id: 'sc-2',
+              title: 'Scene 2: Encrypted Alleyway',
+              content:
+                'Rain heavy-poured into the alleyway. Jack stepped out from the shadows, holding a cipher medallion.',
+            },
+          ],
+        },
+      ]
   })
-const [isScratchpadOpen, setIsScratchpadOpen] = useState<boolean>(false)
-const [isBibleOpen, setIsBibleOpen] = useState<boolean>(false)
+  const [isScratchpadOpen, setIsScratchpadOpen] = useState<boolean>(false)
+  const [isBibleOpen, setIsBibleOpen] = useState<boolean>(false)
+  const [isWhatIfOpen, setIsWhatIfOpen] = useState<boolean>(false)
+  const [whatIfPrompt, setWhatIfPrompt] = useState<string>('')
+  const [whatIfOutput, setWhatIfOutput] = useState<string>('')
   const [activeSceneId, setActiveSceneId] = useState<string>('sc-1')
 
   const [storyCanvas, setStoryCanvas] = useState<string>(() => {
-  return localStorage.getItem('aurastory_canvas') || ''
-})
+    return localStorage.getItem('aurastory_canvas') || ''
+  })
 
-useEffect(() => {
-  localStorage.setItem('aurastory_canvas', storyCanvas)
-}, [storyCanvas])
-const handleExport = () => {
-  const blob = new Blob([storyCanvas], { type: 'text/markdown;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.setAttribute('download', 'scene-draft.md')
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-}
+  useEffect(() => {
+    localStorage.setItem('aurastory_canvas', storyCanvas)
+  }, [storyCanvas])
+  const handleExport = () => {
+    const blob = new Blob([storyCanvas], { type: 'text/markdown;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'scene-draft.md')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+  const handleWhatIf = () => {
+    if (!whatIfPrompt.trim()) return
+    setWhatIfOutput('Brainstorming narrative twists...')
+
+    setTimeout(() => {
+      setWhatIfOutput(
+        `⚡ What If Scenario: "${whatIfPrompt}"\n\n` +
+        `1. Twist: The central conflict shifts unexpectedly, forcing the protagonist to adapt.\n` +
+        `2. Secret: A hidden motive is revealed from an unexpected ally.\n` +
+        `3. Escalation: Time runs out faster than anticipated, escalating the stakes.`
+      )
+    }, 600)
+  }
   const [scratchpadText, setScratchpadText] = useState<string>(() => {
     return (
       localStorage.getItem('aurastory_scratchpad') ||
@@ -80,19 +96,19 @@ const handleExport = () => {
     return saved
       ? JSON.parse(saved)
       : [
-          {
-            name: 'Elena Vance',
-            category: 'Character',
-            current_state: 'Hiding a classified transmission code.',
-            secrets_and_history: 'Former lead cryptographer for the Syndicate.',
-          },
-          {
-            name: 'The Neon Protocol',
-            category: 'World Lore',
-            current_state: 'Active across all sector nodes.',
-            secrets_and_history: 'Can be overridden only by a bloodline biometric key.',
-          },
-        ]
+        {
+          name: 'Elena Vance',
+          category: 'Character',
+          current_state: 'Hiding a classified transmission code.',
+          secrets_and_history: 'Former lead cryptographer for the Syndicate.',
+        },
+        {
+          name: 'The Neon Protocol',
+          category: 'World Lore',
+          current_state: 'Active across all sector nodes.',
+          secrets_and_history: 'Can be overridden only by a bloodline biometric key.',
+        },
+      ]
   })
 
   // UI Toggles
@@ -326,11 +342,10 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
                       <button
                         key={sc.id}
                         onClick={() => handleSelectScene(sc)}
-                        className={`w-full text-left px-2 py-1 rounded text-xs transition-colors flex items-center justify-between ${
-                          activeSceneId === sc.id
+                        className={`w-full text-left px-2 py-1 rounded text-xs transition-colors flex items-center justify-between ${activeSceneId === sc.id
                             ? 'bg-emerald-950 text-emerald-300 font-medium border border-emerald-800'
                             : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
-                        }`}
+                          }`}
                       >
                         <span className="truncate">{sc.title}</span>
                         {activeSceneId === sc.id && <span className="text-[10px]">✏️</span>}
@@ -427,11 +442,11 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
               </button>
             </div>
             <textarea
-  value={scratchpadText}
-  onChange={(e) => setScratchpadText(e.target.value)}
-  placeholder="The neon lights flickered across the wet pavement as the signal dropped."
-  className="..." // keep your existing className styles
-/>
+              value={scratchpadText}
+              onChange={(e) => setScratchpadText(e.target.value)}
+              placeholder="The neon lights flickered across the wet pavement as the signal dropped."
+              className="..." // keep your existing className styles
+            />
           </div>
         )}
 
@@ -452,12 +467,12 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiKey(e.target.value)}
                 className="w-1/3 bg-slate-950 border border-slate-700 text-slate-300 px-3 py-1.5 rounded text-xs"
               />
-              <form onSubmit={handleGenerateWhatIf} className="flex-1 flex gap-2">
+              <form onSubmit={(e) => { e.preventDefault(); handleWhatIf(); }} className="flex-1 flex gap-2">
                 <input
                   type="text"
                   placeholder="e.g. What if Elena fails to open the drive in time?"
-                  value={whatIfInput}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWhatIfInput(e.target.value)}
+                  value={whatIfPrompt}
+                  onChange={(e) => setWhatIfPrompt(e.target.value)}
                   className="flex-1 bg-slate-950 border border-slate-700 text-slate-200 px-3 py-1.5 rounded text-xs"
                   required
                 />
@@ -469,6 +484,11 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
                   {isGenerating ? '...' : 'Explore'}
                 </button>
               </form>
+              {whatIfOutput && (
+                <div className="mt-4 p-4 bg-slate-950/70 border border-amber-500/30 rounded-lg text-amber-200 text-sm whitespace-pre-wrap">
+                  {whatIfOutput}
+                </div>
+              )}
             </div>
             {whatIfBranches.map((branch: string, idx: number) => (
               <div key={idx} className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 mb-2 flex justify-between items-center gap-2">
@@ -510,11 +530,11 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
             Active Scene Canvas
           </h2>
           <textarea
-  value={storyCanvas}
-  onChange={(e) => setStoryCanvas(e.target.value)}
-  placeholder="The neon lights flickered across the wet pavement as the signal dropped."
-  className="w-full h-64 bg-transparent text-slate-100 placeholder:text-slate-500 outline-none resize-none"
-/>
+            value={storyCanvas}
+            onChange={(e) => setStoryCanvas(e.target.value)}
+            placeholder="The neon lights flickered across the wet pavement as the signal dropped."
+            className="w-full h-64 bg-transparent text-slate-100 placeholder:text-slate-500 outline-none resize-none"
+          />
         </div>
       </main>
     </div>
