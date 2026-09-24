@@ -47,7 +47,8 @@ export default function App() {
           },
         ]
   })
-
+const [isScratchpadOpen, setIsScratchpadOpen] = useState<boolean>(false)
+const [isBibleOpen, setIsBibleOpen] = useState<boolean>(false)
   const [activeSceneId, setActiveSceneId] = useState<string>('sc-1')
 
   const [storyCanvas, setStoryCanvas] = useState<string>(() => {
@@ -426,8 +427,8 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
               </button>
             </div>
             <textarea
-  value={storyCanvas}
-  onChange={(e) => setStoryCanvas(e.target.value)}
+  value={scratchpadText}
+  onChange={(e) => setScratchpadText(e.target.value)}
   placeholder="The neon lights flickered across the wet pavement as the signal dropped."
   className="..." // keep your existing className styles
 />
