@@ -50,7 +50,13 @@ export default function App() {
 
   const [activeSceneId, setActiveSceneId] = useState<string>('sc-1')
 
-  const [storyCanvas, setStoryCanvas] = useState<string>('')
+  const [storyCanvas, setStoryCanvas] = useState<string>(() => {
+  return localStorage.getItem('aurastory_canvas') || ''
+})
+
+useEffect(() => {
+  localStorage.setItem('aurastory_canvas', storyCanvas)
+}, [storyCanvas])
 
   const [scratchpadText, setScratchpadText] = useState<string>(() => {
     return (
