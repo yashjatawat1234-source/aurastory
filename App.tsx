@@ -57,7 +57,16 @@ export default function App() {
 useEffect(() => {
   localStorage.setItem('aurastory_canvas', storyCanvas)
 }, [storyCanvas])
-
+const handleExport = () => {
+  const blob = new Blob([storyCanvas], { type: 'text/markdown;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', 'scene-draft.md')
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
   const [scratchpadText, setScratchpadText] = useState<string>(() => {
     return (
       localStorage.getItem('aurastory_scratchpad') ||
@@ -392,7 +401,7 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
             </div>
             <div className="flex flex-wrap gap-3 mt-3">
               <button
-                onClick={handleExportManuscript}
+                onClick={handleExport}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs"
               >
                 📄 Download Full Manuscript (.txt)
