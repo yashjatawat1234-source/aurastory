@@ -65,9 +65,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('aurastory_canvas', storyCanvas)
   }, [storyCanvas])
-  useEffect(() => {
-  localStorage.setItem('aurastory_bible', JSON.stringify(storyBible))
-}, [storyBible])
   const handleExport = () => {
     const blob = new Blob([storyCanvas], { type: 'text/markdown;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -117,6 +114,9 @@ export default function App() {
         },
       ]
   })
+  useEffect(() => {
+  localStorage.setItem('aurastory_bible', JSON.stringify(storyBible))
+}, [storyBible])
   const handleAddBibleEntry = () => {
   if (!newEntryName.trim()) return
   const newEntry = {
