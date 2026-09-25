@@ -54,6 +54,8 @@ export default function App() {
   const [whatIfOutput, setWhatIfOutput] = useState<string>('')
   const [activeSceneId, setActiveSceneId] = useState<string>('sc-1')
 
+  const [newEntryName, setNewEntryName] = useState<string>('')
+  const [newEntryState, setNewEntryState] = useState<string>('')
   const [storyCanvas, setStoryCanvas] = useState<string>(() => {
     return localStorage.getItem('aurastory_canvas') || ''
   })
@@ -110,7 +112,13 @@ export default function App() {
         },
       ]
   })
-
+  const handleAddBibleEntry = () => {
+    if (!newEntryName.trim()) return
+    const newEntry = { name: newEntryName, current_state: newEntryState || 'Active' }
+    setStoryBible((prev) => [...prev, newEntry])
+    setNewEntryName('')
+    setNewEntryState('')
+  }
   // UI Toggles
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true)
   const [isBibleOpen, setIsBibleOpen] = useState<boolean>(false)
@@ -343,8 +351,8 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
                         key={sc.id}
                         onClick={() => handleSelectScene(sc)}
                         className={`w-full text-left px-2 py-1 rounded text-xs transition-colors flex items-center justify-between ${activeSceneId === sc.id
-                            ? 'bg-emerald-950 text-emerald-300 font-medium border border-emerald-800'
-                            : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                          ? 'bg-emerald-950 text-emerald-300 font-medium border border-emerald-800'
+                          : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
                           }`}
                       >
                         <span className="truncate">{sc.title}</span>
@@ -511,6 +519,28 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
               <h2 className="text-sm font-semibold text-emerald-300">Story Bible</h2>
               <button onClick={() => setIsBibleOpen(false)} className="text-slate-400 text-xs">
                 ✕
+              </button>
+            </div>
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                placeholder="Entry Name (e.g. Jack)"
+                value={newEntryName}
+                onChange={(e) => setNewEntryName(e.target.value)}
+                className="px-3 py-1 bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-lg flex-1"
+              />
+              <input
+                type="text"
+                placeholder="Details (e.g. Seeking medallion cipher)"
+                value={newEntryState}
+                onChange={(e) => setNewEntryState(e.target.value)}
+                className="px-3 py-1 bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-lg flex-1"
+              />
+              <button
+                onClick={handleAddBibleEntry}
+                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-semibold text-xs rounded-lg"
+              >
+                Add
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
