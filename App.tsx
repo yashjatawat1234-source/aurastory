@@ -113,19 +113,17 @@ export default function App() {
       ]
   })
   const handleAddBibleEntry = () => {
-    if (!newEntryName.trim()) return
-    const newEntry = { name: newEntryName, current_state: newEntryState || 'Active' }
-    setStoryBible((prev) => [...prev, newEntry])
-    setNewEntryName('')
-    setNewEntryState('')
+  if (!newEntryName.trim()) return
+  const newEntry = {
+    name: newEntryName,
+    category: 'General',
+    current_state: newEntryState || 'Active',
+    secrets_and_history: ''
   }
-  // UI Toggles
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true)
-  const [isBibleOpen, setIsBibleOpen] = useState<boolean>(false)
-  const [isWhatIfOpen, setIsWhatIfOpen] = useState<boolean>(false)
-  const [isScratchpadOpen, setIsScratchpadOpen] = useState<boolean>(false)
-  const [isExportOpen, setIsExportOpen] = useState<boolean>(false)
-
+  setStoryBible((prev) => [...prev, newEntry])
+  setNewEntryName('')
+  setNewEntryState('')
+}
   // Gemini State
   const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('aurastory_gemini_key') || '')
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
