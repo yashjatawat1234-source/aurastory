@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+// @ts-ignore
 import './styles.css'
 
 interface Scene {
@@ -53,7 +54,8 @@ export default function App() {
   const [whatIfPrompt, setWhatIfPrompt] = useState<string>('')
   const [whatIfOutput, setWhatIfOutput] = useState<string>('')
   const [activeSceneId, setActiveSceneId] = useState<string>('sc-1')
-
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true)
+  const [isExportOpen, setIsExportOpen] = useState<boolean>(false)
   const [newEntryName, setNewEntryName] = useState<string>('')
   const [newEntryState, setNewEntryState] = useState<string>('')
   const [storyCanvas, setStoryCanvas] = useState<string>(() => {
