@@ -115,26 +115,29 @@ export default function App() {
       ]
   })
   useEffect(() => {
-  localStorage.setItem('aurastory_bible', JSON.stringify(storyBible))
-}, [storyBible])
+    localStorage.setItem('aurastory_bible', JSON.stringify(storyBible))
+  }, [storyBible])
   const handleAddBibleEntry = () => {
-  if (!newEntryName.trim()) return
-  const newEntry = {
-    name: newEntryName,
-    category: 'General',
-    current_state: newEntryState || 'Active',
-    secrets_and_history: ''
+    if (!newEntryName.trim()) return
+    const newEntry = {
+      name: newEntryName,
+      category: 'General',
+      current_state: newEntryState || 'Active',
+      secrets_and_history: ''
+    }
+    setStoryBible((prev) => {
+      // Automatically remove sample placeholder entries
+      const customEntries = prev.filter(
+        (entry) => entry.name !== 'Elena Vance' && entry.name !== 'The Neon Protocol'
+      )
+      return [...customEntries, newEntry]
+    })
+    setNewEntryName('')
+    setNewEntryState('')
   }
-  setStoryBible((prev) => {
-    // Automatically remove sample placeholder entries
-    const customEntries = prev.filter(
-      (entry) => entry.name !== 'Elena Vance' && entry.name !== 'The Neon Protocol'
-    )
-    return [...customEntries, newEntry]
-  })
-  setNewEntryName('')
-  setNewEntryState('')
-}
+  const handleDeleteBibleEntry = (indexToDelete: number) => {
+    setStoryBible((prev) => prev.filter((_, index) => index !== indexToDelete))
+  }
   // Gemini State
   const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('aurastory_gemini_key') || '')
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
@@ -554,7 +557,14 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {storyBible.map((entry: BibleEntry, idx: number) => (
-                <div key={idx} className="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                <div key={idx} className="relative p-3 bg-slate-950 rounded-lg border border-slate-800">
+                  <button
+                    onClick={() => handleDeleteBibleEntry(idx)}
+                    className="absolute top-2 right-2 text-slate-500 hover:text-red-400 text-xs transition-colors"
+                    title="Delete Entry"
+                  >
+                    ✕
+                  </button>
                   <span className="font-bold text-xs text-slate-200">{entry.name}</span>
                   <p className="text-[11px] text-slate-400">{entry.current_state}</p>
                 </div>
