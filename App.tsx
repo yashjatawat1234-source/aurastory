@@ -65,6 +65,9 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('aurastory_canvas', storyCanvas)
   }, [storyCanvas])
+  useEffect(() => {
+  localStorage.setItem('aurastory_bible', JSON.stringify(storyBible))
+}, [storyBible])
   const handleExport = () => {
     const blob = new Blob([storyCanvas], { type: 'text/markdown;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -122,7 +125,13 @@ export default function App() {
     current_state: newEntryState || 'Active',
     secrets_and_history: ''
   }
-  setStoryBible((prev) => [...prev, newEntry])
+  setStoryBible((prev) => {
+    // Automatically remove sample placeholder entries
+    const customEntries = prev.filter(
+      (entry) => entry.name !== 'Elena Vance' && entry.name !== 'The Neon Protocol'
+    )
+    return [...customEntries, newEntry]
+  })
   setNewEntryName('')
   setNewEntryState('')
 }
