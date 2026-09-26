@@ -102,7 +102,7 @@ export default function App() {
     try {
       const cleanKey = apiKey.trim()
 
-      // 1. Fetch the exact list of active models available for your API key
+      // 1. Fetch all active models supported by your API key directly from Google
       const modelsRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`
       )
@@ -112,20 +112,20 @@ export default function App() {
         throw new Error(modelsData.error?.message || 'Invalid API Key or API error.')
       }
 
-      // 2. Filter for models that support text generation (generateContent)
+      // 2. Filter for models that support text generation
       const availableModels: string[] = (modelsData.models || [])
         .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
         .map((m: any) => m.name.replace('models/', ''))
 
       if (availableModels.length === 0) {
-        throw new Error('No models capable of text generation were found for this API key.')
+        throw new Error('No active text-generation models found for this API key.')
       }
 
-      // 3. Pick an active Flash model, or fallback to the first active model returned
+      // 3. Automatically pick an active model (prefers flash models if available)
       const selectedModel =
         availableModels.find((m) => m.includes('flash')) || availableModels[0]
 
-      // 4. Send the generation prompt to the discovered valid model
+      // 4. Generate content using the verified active model
       const genRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${cleanKey}`,
         {
@@ -155,7 +155,7 @@ export default function App() {
       if (generatedText) {
         setStoryCanvas((prev) => `${prev}\n\n${generatedText.trim()}`)
       } else {
-        alert('Gemini returned an empty response. Please try again.')
+        alert('Gemini returned an empty response. Please try clicking again.')
       }
     } catch (err: any) {
       console.error('Gemini API Error:', err)
