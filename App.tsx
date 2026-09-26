@@ -98,47 +98,71 @@ export default function App() {
     }
 
     setIsGenerating(true)
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey.trim()}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
+
+    // Stable Gemini model pool for fallback
+    const modelsToTry = [
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-1.5-flash-8b',
+      'gemini-1.5-pro',
+    ]
+
+    let lastErrorMessage = ''
+
+    for (const model of modelsToTry) {
+      try {
+        // Retry up to 2 times per model if Google returns high demand (503)
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                contents: [
                   {
-                    text: `Continue the following story scene naturally with 2-3 atmospheric paragraphs:\n\n${storyCanvas}`,
+                    parts: [
+                      {
+                        text: `Continue the following story scene naturally with 2-3 atmospheric paragraphs:\n\n${storyCanvas}`,
+                      },
+                    ],
                   },
                 ],
-              },
-            ],
-          }),
+              }),
+            }
+          )
+
+          const data = await response.json()
+
+          if (response.ok) {
+            const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
+            if (generatedText) {
+              setStoryCanvas((prev) => `${prev}\n\n${generatedText.trim()}`)
+              setIsGenerating(false)
+              return // Success!
+            }
+          }
+
+          lastErrorMessage = data.error?.message || `HTTP ${response.status} Error`
+
+          // Wait 1 second on high demand before retrying or switching models
+          if (response.status === 503 || response.status === 429 || lastErrorMessage.includes('high demand')) {
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+          } else {
+            break
+          }
         }
-      )
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || `HTTP ${response.status} Error`)
+      } catch (err: any) {
+        lastErrorMessage = err.message || 'Network error'
       }
-
-      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
-      if (generatedText) {
-        setStoryCanvas((prev) => `${prev}\n\n${generatedText.trim()}`)
-      } else {
-        alert('Gemini returned an empty response. Try clicking again.')
-      }
-    } catch (err: any) {
-      console.error('Gemini API Error:', err)
-      alert(`Generation Error: ${err.message || 'Failed to reach Gemini API'}`)
-    } finally {
-      setIsGenerating(false)
     }
+
+    alert(`Generation Error: ${lastErrorMessage || 'All Gemini model endpoints are currently busy. Please try again in a moment.'}`)
+    setIsGenerating(false)
   }
+
   const [scratchpadText, setScratchpadText] = useState<string>(() => {
     return (
       localStorage.getItem('aurastory_scratchpad') ||
