@@ -625,7 +625,7 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
             <button
               onClick={handleGenerateAIContinuation}
               disabled={isGenerating}
-              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-slate-950 font-semibold text-xs rounded transition-colors flex items-center gap-1"
+              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white rounded-lg text-sm transition-colors"
             >
               {isGenerating ? 'Drafting...' : '✨ Auto-Continue Scene'}
             </button>
@@ -634,7 +634,11 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
           <textarea
             value={storyCanvas}
             onChange={(e) => setStoryCanvas(e.target.value)}
-            className="w-full h-80 p-4 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-sm font-mono focus:outline-none focus:border-emerald-500/50 resize-y leading-relaxed"
+            className="w-full h-80 p-4 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 resize-none font-mono"
             placeholder="Write your scene here..."
           />
         </div>
+  </main>
+</div>
+  )
+}
