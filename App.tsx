@@ -77,16 +77,19 @@ export default function App() {
   }
   const handleWhatIf = () => {
     if (!whatIfPrompt.trim()) return
-    setWhatIfOutput('Brainstorming narrative twists...')
+    setIsGenerating(true)
+    setWhatIfOutput('Brainstorming narrative twists and alternate timelines...')
 
     setTimeout(() => {
-      setWhatIfOutput(
-        `⚡ What If Scenario: "${whatIfPrompt}"\n\n` +
-        `1. Twist: The central conflict shifts unexpectedly, forcing the protagonist to adapt.\n` +
-        `2. Secret: A hidden motive is revealed from an unexpected ally.\n` +
-        `3. Escalation: Time runs out faster than anticipated, escalating the stakes.`
-      )
-    }, 600)
+      const generatedBranches = [
+        `What if ${whatIfPrompt} reveals an unexpected betrayal from a trusted ally?`,
+        `What if ${whatIfPrompt} triggers a point-of-no-return event for the protagonist?`,
+        `What if ${whatIfPrompt} uncovers a hidden secret recorded in the Story Bible?`
+      ]
+      setWhatIfBranches(generatedBranches)
+      setWhatIfOutput('')
+      setIsGenerating(false)
+    }, 1200)
   }
   const [scratchpadText, setScratchpadText] = useState<string>(() => {
     return (
@@ -472,55 +475,59 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
 
         {/* What If Drawer */}
         {isWhatIfOpen && (
-          <div className="mb-8 p-5 bg-slate-900 border border-amber-500/40 rounded-xl shadow-2xl">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-sm font-semibold text-amber-300">⚡ "What If?" Engine</h2>
-              <button onClick={() => setIsWhatIfOpen(false)} className="text-slate-400 text-xs">
+          <div className="p-5 bg-slate-900 border border-slate-800 rounded-xl shadow-lg mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-sm font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                ⚡ What If? Narrative Brainstormer
+              </h2>
+              <button
+                onClick={() => setIsWhatIfOpen(false)}
+                className="text-slate-500 hover:text-slate-300 text-sm"
+              >
                 ✕
               </button>
             </div>
-            <div className="mb-4 flex gap-2">
+
+            <div className="flex gap-2 mb-4">
               <input
                 type="text"
-                placeholder="Enter Gemini API Key (optional)..."
-                value={apiKey}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiKey(e.target.value)}
-                className="w-1/3 bg-slate-950 border border-slate-700 text-slate-300 px-3 py-1.5 rounded text-xs"
+                placeholder="Enter a prompt or plot scenario (e.g., Jack finds the cipher)..."
+                value={whatIfPrompt}
+                onChange={(e) => setWhatIfPrompt(e.target.value)}
+                className="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500"
               />
-              <form onSubmit={(e) => { e.preventDefault(); handleWhatIf(); }} className="flex-1 flex gap-2">
-                <input
-                  type="text"
-                  placeholder="e.g. What if Elena fails to open the drive in time?"
-                  value={whatIfPrompt}
-                  onChange={(e) => setWhatIfPrompt(e.target.value)}
-                  className="flex-1 bg-slate-950 border border-slate-700 text-slate-200 px-3 py-1.5 rounded text-xs"
-                  required
-                />
-                <button
-                  type="submit"
-                  disabled={isGenerating}
-                  className="px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded text-xs"
-                >
-                  {isGenerating ? '...' : 'Explore'}
-                </button>
-              </form>
-              {whatIfOutput && (
-                <div className="mt-4 p-4 bg-slate-950/70 border border-amber-500/30 rounded-lg text-amber-200 text-sm whitespace-pre-wrap">
-                  {whatIfOutput}
-                </div>
-              )}
+              <button
+                onClick={handleWhatIf}
+                disabled={isGenerating}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 text-slate-950 font-semibold text-sm rounded-lg transition-colors"
+              >
+                {isGenerating ? 'Thinking...' : 'Explore'}
+              </button>
             </div>
-            {whatIfBranches.map((branch: string, idx: number) => (
-              <div key={idx} className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 mb-2 flex justify-between items-center gap-2">
-                <p className="text-xs text-slate-300 flex-1">{branch}</p>
-                <button
-                  onClick={() => setStoryCanvas((prev: string) => branch + '\n\n' + prev)}
-                  className="px-2.5 py-1 bg-amber-950 text-amber-300 border border-amber-800 rounded text-[10px]"
-                >
-                  Pull
-                </button>
+
+            {whatIfOutput && (
+              <p className="text-xs text-amber-300 italic mb-3">{whatIfOutput}</p>
+            )}
+
+            {whatIfBranches.length > 0 && (
+              <div className="space-y-2 mt-4">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Alternate Plot Branches</span>
+                {whatIfBranches.map((branch, index) => (
+                  <div
+                    key={index}
+                    className="p-3 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-lg flex justify-between items-center transition-all group"
+                  >
+                    <p className="text-xs text-slate-300 leading-relaxed pr-3">{branch}</p>
+                    <button
+                      onClick={() => setStoryCanvas((prev) => prev + `\n\n[Plot Twist]: ${branch}`)}
+                      className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[11px] font-medium rounded whitespace-nowrap transition-colors"
+                    >
+                      + Insert to Canvas
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
 
