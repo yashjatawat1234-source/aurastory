@@ -92,37 +92,49 @@ export default function App() {
     }, 1200)
   }
   const handleGenerateAIContinuation = async () => {
-    if (!apiKey.trim()) {
-      alert('Please enter your Gemini API Key in the top settings or What If drawer first.')
+    if (!apiKey || !apiKey.trim()) {
+      alert('Please enter your Gemini API Key in the header field.')
       return
     }
+
     setIsGenerating(true)
-
     try {
-      const prompt = `Context from Story Bible:\n${JSON.stringify(storyBible)}\n\nCurrent Scene Content:\n${storyCanvas}\n\nContinue the story naturally with 2-3 compelling paragraphs focusing on narrative flow and character action:`
-
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+          },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }]
-          })
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `Continue the following story scene naturally with 2-3 atmospheric paragraphs:\n\n${storyCanvas}`,
+                  },
+                ],
+              },
+            ],
+          }),
         }
       )
 
       const data = await response.json()
-      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
 
-      if (generatedText) {
-        setStoryCanvas((prev) => prev + '\n\n' + generatedText)
-      } else {
-        alert('Failed to generate continuation. Please check your API key.')
+      if (!response.ok) {
+        throw new Error(data.error?.message || `HTTP ${response.status} Error`)
       }
-    } catch (error) {
-      console.error(error)
-      alert('An error occurred during generation.')
+
+      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
+      if (generatedText) {
+        setStoryCanvas((prev) => `${prev}\n\n${generatedText.trim()}`)
+      } else {
+        alert('Gemini returned an empty response. Try clicking again.')
+      }
+    } catch (err: any) {
+      console.error('Gemini API Error:', err)
+      alert(`Generation Error: ${err.message || 'Failed to reach Gemini API'}`)
     } finally {
       setIsGenerating(false)
     }
