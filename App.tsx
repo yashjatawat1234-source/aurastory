@@ -99,68 +99,70 @@ export default function App() {
 
     setIsGenerating(true)
 
-    // Stable Gemini model pool for fallback
-    const modelsToTry = [
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
-      'gemini-1.5-flash-8b',
-      'gemini-1.5-pro',
-    ]
+    try {
+      const cleanKey = apiKey.trim()
 
-    let lastErrorMessage = ''
+      // 1. Fetch the exact list of active models available for your API key
+      const modelsRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`
+      )
+      const modelsData = await modelsRes.json()
 
-    for (const model of modelsToTry) {
-      try {
-        // Retry up to 2 times per model if Google returns high demand (503)
-        for (let attempt = 0; attempt < 2; attempt++) {
-          const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                contents: [
+      if (!modelsRes.ok) {
+        throw new Error(modelsData.error?.message || 'Invalid API Key or API error.')
+      }
+
+      // 2. Filter for models that support text generation (generateContent)
+      const availableModels: string[] = (modelsData.models || [])
+        .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+        .map((m: any) => m.name.replace('models/', ''))
+
+      if (availableModels.length === 0) {
+        throw new Error('No models capable of text generation were found for this API key.')
+      }
+
+      // 3. Pick an active Flash model, or fallback to the first active model returned
+      const selectedModel =
+        availableModels.find((m) => m.includes('flash')) || availableModels[0]
+
+      // 4. Send the generation prompt to the discovered valid model
+      const genRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${cleanKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
                   {
-                    parts: [
-                      {
-                        text: `Continue the following story scene naturally with 2-3 atmospheric paragraphs:\n\n${storyCanvas}`,
-                      },
-                    ],
+                    text: `Continue the following story scene naturally with 2-3 atmospheric paragraphs:\n\n${storyCanvas}`,
                   },
                 ],
-              }),
-            }
-          )
-
-          const data = await response.json()
-
-          if (response.ok) {
-            const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
-            if (generatedText) {
-              setStoryCanvas((prev) => `${prev}\n\n${generatedText.trim()}`)
-              setIsGenerating(false)
-              return // Success!
-            }
-          }
-
-          lastErrorMessage = data.error?.message || `HTTP ${response.status} Error`
-
-          // Wait 1 second on high demand before retrying or switching models
-          if (response.status === 503 || response.status === 429 || lastErrorMessage.includes('high demand')) {
-            await new Promise((resolve) => setTimeout(resolve, 1000))
-          } else {
-            break
-          }
+              },
+            ],
+          }),
         }
-      } catch (err: any) {
-        lastErrorMessage = err.message || 'Network error'
-      }
-    }
+      )
 
-    alert(`Generation Error: ${lastErrorMessage || 'All Gemini model endpoints are currently busy. Please try again in a moment.'}`)
-    setIsGenerating(false)
+      const genData = await genRes.json()
+
+      if (!genRes.ok) {
+        throw new Error(genData.error?.message || `HTTP ${genRes.status} Error`)
+      }
+
+      const generatedText = genData.candidates?.[0]?.content?.parts?.[0]?.text
+      if (generatedText) {
+        setStoryCanvas((prev) => `${prev}\n\n${generatedText.trim()}`)
+      } else {
+        alert('Gemini returned an empty response. Please try again.')
+      }
+    } catch (err: any) {
+      console.error('Gemini API Error:', err)
+      alert(`Generation Error: ${err.message || 'Failed to reach Gemini API'}`)
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   const [scratchpadText, setScratchpadText] = useState<string>(() => {
