@@ -91,6 +91,42 @@ export default function App() {
       setIsGenerating(false)
     }, 1200)
   }
+  const handleGenerateAIContinuation = async () => {
+    if (!apiKey.trim()) {
+      alert('Please enter your Gemini API Key in the top settings or What If drawer first.')
+      return
+    }
+    setIsGenerating(true)
+
+    try {
+      const prompt = `Context from Story Bible:\n${JSON.stringify(storyBible)}\n\nCurrent Scene Content:\n${storyCanvas}\n\nContinue the story naturally with 2-3 compelling paragraphs focusing on narrative flow and character action:`
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        }
+      )
+
+      const data = await response.json()
+      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
+
+      if (generatedText) {
+        setStoryCanvas((prev) => prev + '\n\n' + generatedText)
+      } else {
+        alert('Failed to generate continuation. Please check your API key.')
+      }
+    } catch (error) {
+      console.error(error)
+      alert('An error occurred during generation.')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
   const [scratchpadText, setScratchpadText] = useState<string>(() => {
     return (
       localStorage.getItem('aurastory_scratchpad') ||
@@ -582,17 +618,23 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
 
         {/* Active Canvas Editor */}
         <div className="p-5 bg-slate-900 border border-slate-800 rounded-xl shadow-lg mb-8">
-          <h2 className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider">
-            Active Scene Canvas
-          </h2>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              Active Scene Canvas
+            </h2>
+            <button
+              onClick={handleGenerateAIContinuation}
+              disabled={isGenerating}
+              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-slate-950 font-semibold text-xs rounded transition-colors flex items-center gap-1"
+            >
+              {isGenerating ? 'Drafting...' : '✨ Auto-Continue Scene'}
+            </button>
+          </div>
+
           <textarea
             value={storyCanvas}
             onChange={(e) => setStoryCanvas(e.target.value)}
-            placeholder="The neon lights flickered across the wet pavement as the signal dropped."
-            className="w-full h-64 bg-transparent text-slate-100 placeholder:text-slate-500 outline-none resize-none"
+            className="w-full h-80 p-4 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-sm font-mono focus:outline-none focus:border-emerald-500/50 resize-y leading-relaxed"
+            placeholder="Write your scene here..."
           />
         </div>
-      </main>
-    </div>
-  )
-}
