@@ -437,28 +437,38 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
             <h1 className="text-2xl font-bold text-emerald-400">AuraStory Editor</h1>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="password"
+              placeholder="Gemini API Key..."
+              value={apiKey}
+              onChange={(e) => {
+                setApiKey(e.target.value)
+                localStorage.setItem('aurastory_gemini_key', e.target.value)
+              }}
+              className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-44 transition-colors"
+            />
             <button
-              onClick={() => setIsExportOpen(!isExportOpen)}
-              className="px-4 py-2 bg-blue-950 hover:bg-blue-900 text-blue-300 rounded-lg text-xs font-medium border border-blue-700/50"
+              onClick={handleExport}
+              className="px-4 py-2 bg-blue-950 hover:bg-blue-900 text-blue-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
             >
-              📥 Export
+              📇 Export
             </button>
             <button
               onClick={() => setIsScratchpadOpen(!isScratchpadOpen)}
-              className="px-4 py-2 bg-purple-950 hover:bg-purple-900 text-purple-300 rounded-lg text-xs font-medium border border-purple-700/50"
+              className="px-4 py-2 bg-purple-950 hover:bg-purple-900 text-purple-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
             >
-              📝 Scratchpad
+              📜 Scratchpad
             </button>
             <button
               onClick={() => setIsWhatIfOpen(!isWhatIfOpen)}
-              className="px-4 py-2 bg-amber-950 hover:bg-amber-900 text-amber-300 rounded-lg text-xs font-medium border border-amber-700/50"
+              className="px-4 py-2 bg-amber-950 hover:bg-amber-900 text-amber-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
             >
               ⚡ What If?
             </button>
             <button
               onClick={() => setIsBibleOpen(!isBibleOpen)}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-300 rounded-lg text-xs font-medium border border-slate-700"
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
             >
               📖 Story Bible ({storyBible.length})
             </button>
@@ -638,7 +648,7 @@ Generate exactly 3 distinct plot branches as a JSON array of strings.`
             placeholder="Write your scene here..."
           />
         </div>
-  </main>
-</div>
+      </main>
+    </div>
   )
 }
