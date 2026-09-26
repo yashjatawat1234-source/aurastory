@@ -98,39 +98,14 @@ export default function App() {
     }
 
     setIsGenerating(true)
-
     try {
-      const cleanKey = apiKey.trim()
-
-      // 1. Fetch all active models supported by your API key directly from Google
-      const modelsRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`
-      )
-      const modelsData = await modelsRes.json()
-
-      if (!modelsRes.ok) {
-        throw new Error(modelsData.error?.message || 'Invalid API Key or API error.')
-      }
-
-      // 2. Filter for models that support text generation
-      const availableModels: string[] = (modelsData.models || [])
-        .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
-        .map((m: any) => m.name.replace('models/', ''))
-
-      if (availableModels.length === 0) {
-        throw new Error('No active text-generation models found for this API key.')
-      }
-
-      // 3. Automatically pick an active model (prefers flash models if available)
-      const selectedModel =
-        availableModels.find((m) => m.includes('flash')) || availableModels[0]
-
-      // 4. Generate content using the verified active model
-      const genRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${cleanKey}`,
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey.trim()}`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+          },
           body: JSON.stringify({
             contents: [
               {
@@ -145,17 +120,17 @@ export default function App() {
         }
       )
 
-      const genData = await genRes.json()
+      const data = await response.json()
 
-      if (!genRes.ok) {
-        throw new Error(genData.error?.message || `HTTP ${genRes.status} Error`)
+      if (!response.ok) {
+        throw new Error(data.error?.message || `HTTP ${response.status} Error`)
       }
 
-      const generatedText = genData.candidates?.[0]?.content?.parts?.[0]?.text
+      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
       if (generatedText) {
         setStoryCanvas((prev) => `${prev}\n\n${generatedText.trim()}`)
       } else {
-        alert('Gemini returned an empty response. Please try clicking again.')
+        alert('Gemini returned an empty response. Try clicking again.')
       }
     } catch (err: any) {
       console.error('Gemini API Error:', err)
