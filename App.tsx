@@ -365,10 +365,10 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
       const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
       if (generatedText) {
         const branches = generatedText
-          .split(/\n(?=[1-3]\.\s*)/)
-          .map((branch) => branch.replace(/^[1-3]\.\s*/, '').trim())
-          .filter((branch) => branch.length > 0)
-          .slice(0, 3)
+        .split(/\n(?=[1-3]\.\s*)/)
+        .map((branch: string) => branch.replace(/^[1-3]\.\s*/, '').trim())
+        .filter((branch: string) => branch.length > 0)
+        .slice(0, 3)
 
         setWhatIfBranches(branches)
       }
