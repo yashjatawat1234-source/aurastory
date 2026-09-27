@@ -75,21 +75,71 @@ export default function App() {
     link.click()
     document.body.removeChild(link)
   }
-  const handleWhatIf = () => {
-    if (!whatIfPrompt.trim()) return
-    setIsGenerating(true)
-    setWhatIfOutput('Brainstorming narrative twists and alternate timelines...')
+  const handleWhatIf = async () => {
+    if (!whatIfPrompt || !whatIfPrompt.trim()) return
 
-    setTimeout(() => {
-      const generatedBranches = [
-        `What if ${whatIfPrompt} reveals an unexpected betrayal from a trusted ally?`,
-        `What if ${whatIfPrompt} triggers a point-of-no-return event for the protagonist?`,
-        `What if ${whatIfPrompt} uncovers a hidden secret recorded in the Story Bible?`
-      ]
-      setWhatIfBranches(generatedBranches)
-      setWhatIfOutput('')
+    if (!apiKey || !apiKey.trim()) {
+      alert('Please enter your Gemini API Key in the top header field.')
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      const cleanKey = apiKey.trim()
+      const promptText = `You are an elite creative writing mentor and master narrative strategist.
+
+WRITER'S SAMPLE CANVAS (ANALYZE THIS FOR STYLE, VOICE, VOCABULARY & RHYTHM):
+"""
+${storyCanvas || 'No active scene context provided.'}
+"""
+
+WRITER'S "WHAT IF?" EXPLORATION:
+"${whatIfPrompt}"
+
+TASK & STYLE-CLONING DIRECTIVE:
+1. VOICE & STYLE ANALYSIS: Analyze the sample canvas above for its exact prose style, sentence length, atmospheric mood, vocabulary level, and sensory detail.
+2. LANGUAGE & SCRIPT CLONING: Detect the exact language and script used (e.g., Hindi in Devanagari, Hinglish, or English). You MUST generate all responses in that EXACT SAME language and script. If the canvas/question is in Hindi, respond strictly in rich, authentic Hindi.
+3. NARRATIVE GENERATION: Develop 3 compelling, dramatic, and immersive plot directions based on the writer's "What If?" question. Each option must match the writer's voice so naturally that it feels like their own internal creative instinct speaking.
+
+FORMATTING RULE:
+Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a detailed, atmospheric paragraph (3 to 5 sentences long) full of narrative tension, character emotion, and vivid storytelling possibilities. Avoid generic or superficial summaries.
+
+1. [Style-Matched Detailed Plot Branch 1]
+2. [Style-Matched Detailed Plot Branch 2]
+3. [Style-Matched Detailed Plot Branch 3]`
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${cleanKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: promptText }] }],
+          }),
+        }
+      )
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Failed to generate style-matched plot branches.')
+      }
+
+      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
+      if (generatedText) {
+        const branches = generatedText
+          .split(/\n(?=[1-3]\.\s*)/)
+          .map((branch: string) => branch.replace(/^[1-3]\.\s*/, '').trim())
+          .filter((branch: string) => branch.length > 0)
+          .slice(0, 3)
+
+        setWhatIfBranches(branches)
+      }
+    } catch (err: any) {
+      console.error('What If Generation Error:', err)
+      alert(`What If Error: ${err.message || 'Failed to generate plot branches.'}`)
+    } finally {
       setIsGenerating(false)
-    }, 1200)
+    }
   }
   const handleGenerateAIContinuation = async () => {
     if (!apiKey || !apiKey.trim()) {
@@ -365,10 +415,10 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
       const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
       if (generatedText) {
         const branches = generatedText
-        .split(/\n(?=[1-3]\.\s*)/)
-        .map((branch: string) => branch.replace(/^[1-3]\.\s*/, '').trim())
-        .filter((branch: string) => branch.length > 0)
-        .slice(0, 3)
+          .split(/\n(?=[1-3]\.\s*)/)
+          .map((branch: string) => branch.replace(/^[1-3]\.\s*/, '').trim())
+          .filter((branch: string) => branch.length > 0)
+          .slice(0, 3)
 
         setWhatIfBranches(branches)
       }
