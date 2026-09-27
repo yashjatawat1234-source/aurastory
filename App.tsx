@@ -241,7 +241,9 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
     setStoryBible((prev) => prev.filter((_, index) => index !== indexToDelete))
   }
   // Gemini State
-  const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('aurastory_gemini_key') || '')
+  const [apiKey, setApiKey] = useState<string>(
+    import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('aurastory_gemini_key') || ''
+  )
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
   const [whatIfInput, setWhatIfInput] = useState<string>('')
   const [whatIfBranches, setWhatIfBranches] = useState<string[]>([])
