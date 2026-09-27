@@ -324,26 +324,27 @@ export default function App() {
     setIsGenerating(true)
     try {
       const cleanKey = apiKey.trim()
-      const promptText = `You are a world-class creative writing consultant and master storyteller.
+      const promptText = `You are an elite creative writing mentor and master narrative strategist.
 
-Current Scene Context from the writer's canvas:
-"${storyCanvas || 'No active scene text yet.'}"
+WRITER'S SAMPLE CANVAS (ANALYZE THIS FOR STYLE, VOICE, VOCABULARY & RHYTHM):
+"""
+${storyCanvas || 'No active scene context provided.'}
+"""
 
-Writer's "What If?" Scenario:
+WRITER'S "WHAT IF?" EXPLORATION:
 "${whatIfInput}"
 
-TASK:
-Analyze the writer's scenario against the active scene and generate 3 rich, deeply engaging, detailed, and dramatic plot twists/directions. Each option must carry high narrative tension, emotional stakes, and compelling storytelling possibilities.
-
-CRITICAL LANGUAGE & SCRIPT RULE:
-Detect the exact language and script used in the Writer's "What If?" Scenario (e.g., Hindi in Devanagari script, Hinglish, or English). Respond STRICTLY in that EXACT SAME language and script. If written in Hindi, write all 3 options in rich, detailed Hindi.
+TASK & STYLE-CLONING DIRECTIVE:
+1. VOICE & STYLE ANALYSIS: Analyze the sample canvas above for its exact prose style, sentence length, atmospheric mood, vocabulary level, and sensory detail.
+2. LANGUAGE & SCRIPT CLONING: Detect the exact language and script used (e.g., Hindi in Devanagari, Hinglish, or English). You MUST generate all responses in that EXACT SAME language and script. If the canvas/question is in Hindi, respond strictly in rich, authentic Hindi.
+3. NARRATIVE GENERATION: Develop 3 compelling, dramatic, and immersive plot directions based on the writer's "What If?" question. Each option must match the writer's voice so naturally that it feels like their own internal creative instinct speaking.
 
 FORMATTING RULE:
-Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a detailed, rich paragraph (3–5 sentences long) that thoroughly develops the idea. Avoid short or generic one-line summaries.
+Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a detailed, atmospheric paragraph (3 to 5 sentences long) full of narrative tension, character emotion, and vivid storytelling possibilities. Avoid generic or superficial summaries.
 
-1. [Detailed Creative Plot Branch 1]
-2. [Detailed Creative Plot Branch 2]
-3. [Detailed Creative Plot Branch 3]`
+1. [Style-Matched Detailed Plot Branch 1]
+2. [Style-Matched Detailed Plot Branch 2]
+3. [Style-Matched Detailed Plot Branch 3]`
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${cleanKey}`,
@@ -358,7 +359,7 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
 
       const data = await response.json()
       if (!response.ok) {
-        throw new Error(data.error?.message || 'Failed to generate narrative branches.')
+        throw new Error(data.error?.message || 'Failed to generate style-matched plot branches.')
       }
 
       const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
