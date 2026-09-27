@@ -316,47 +316,64 @@ export default function App() {
     e.preventDefault()
     if (!whatIfInput.trim()) return
 
-    if (!apiKey.trim()) {
-      setWhatIfBranches([
-        `[Alt Branch 1] What if ${whatIfInput}? Suddenly, the transmission triggers an emergency blackout across the sector.`,
-        `[Alt Branch 2] What if ${whatIfInput}? Elena realizes the data was a planted decoy designed to track her position.`,
-        `[Alt Branch 3] What if ${whatIfInput}? An unexpected ally steps out from the shadows with a bypass key.`,
-      ])
+    if (!apiKey || !apiKey.trim()) {
+      alert('Please enter your Gemini API Key in the top header field.')
       return
     }
 
     setIsGenerating(true)
     try {
-      const promptText = `You are a professional creative writing assistant for a story workspace. 
-Current Story Context: "${storyCanvas.slice(-300)}"
-Speculative "What If?" Premise: "${whatIfInput}"
-Generate exactly 3 distinct plot branches as a JSON array of strings.`
+      const cleanKey = apiKey.trim()
+      const promptText = `You are a world-class creative writing consultant and master storyteller.
+
+Current Scene Context from the writer's canvas:
+"${storyCanvas || 'No active scene text yet.'}"
+
+Writer's "What If?" Scenario:
+"${whatIfInput}"
+
+TASK:
+Analyze the writer's scenario against the active scene and generate 3 rich, deeply engaging, detailed, and dramatic plot twists/directions. Each option must carry high narrative tension, emotional stakes, and compelling storytelling possibilities.
+
+CRITICAL LANGUAGE & SCRIPT RULE:
+Detect the exact language and script used in the Writer's "What If?" Scenario (e.g., Hindi in Devanagari script, Hinglish, or English). Respond STRICTLY in that EXACT SAME language and script. If written in Hindi, write all 3 options in rich, detailed Hindi.
+
+FORMATTING RULE:
+Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a detailed, rich paragraph (3–5 sentences long) that thoroughly develops the idea. Avoid short or generic one-line summaries.
+
+1. [Detailed Creative Plot Branch 1]
+2. [Detailed Creative Plot Branch 2]
+3. [Detailed Creative Plot Branch 3]`
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${cleanKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] }),
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: promptText }] }],
+          }),
         }
       )
 
       const data = await response.json()
-      const rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-      const cleaned = rawResponse.replace(/```json/g, '').replace(/```/g, '').trim()
-      const parsedBranches = JSON.parse(cleaned)
-
-      if (Array.isArray(parsedBranches)) {
-        setWhatIfBranches(parsedBranches)
-      } else {
-        setWhatIfBranches([rawResponse])
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Failed to generate narrative branches.')
       }
-    } catch (err) {
-      console.error('Gemini API Error:', err)
-      setWhatIfBranches([
-        `[Live Twist 1] What if ${whatIfInput}? An unexpected signal override redirects the transmission.`,
-        `[Live Twist 2] What if ${whatIfInput}? Elena discovers an encrypted file header matching her father's initials.`,
-      ])
+
+      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
+      if (generatedText) {
+        const branches = generatedText
+          .split(/\n(?=[1-3]\.\s*)/)
+          .map((branch) => branch.replace(/^[1-3]\.\s*/, '').trim())
+          .filter((branch) => branch.length > 0)
+          .slice(0, 3)
+
+        setWhatIfBranches(branches)
+      }
+    } catch (err: any) {
+      console.error('What If Generation Error:', err)
+      alert(`What If Error: ${err.message || 'Failed to generate plot branches.'}`)
     } finally {
       setIsGenerating(false)
     }
