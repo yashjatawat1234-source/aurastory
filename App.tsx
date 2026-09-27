@@ -116,7 +116,7 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
 3. [Style-Matched Detailed Plot Branch 3]`
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${cleanKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cleanKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
