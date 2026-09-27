@@ -75,6 +75,61 @@ export default function App() {
     link.click()
     document.body.removeChild(link)
   }
+  const callGeminiAPI = async (promptText: string, cleanKey: string): Promise<string> => {
+    // Verified active Gemini v1beta endpoints
+    const candidateModels = [
+      'gemini-3.8-flash',
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash-latest'
+    ]
+
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+    let lastErrorMessage = ''
+
+    for (const model of candidateModels) {
+      try {
+        let response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: promptText }] }],
+            }),
+          }
+        )
+
+        // Retry once on 503 (High Demand) or 429 (Rate Limit)
+        if (response.status === 503 || response.status === 429) {
+          console.warn(`Model ${model} busy. Retrying in 1s...`)
+          await delay(1000)
+          response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: promptText }] }],
+              }),
+            }
+          )
+        }
+
+        const data = await response.json()
+
+        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          return data.candidates[0].content.parts[0].text
+        } else {
+          lastErrorMessage = data.error?.message || `Model ${model} returned error status ${response.status}`
+        }
+      } catch (err: any) {
+        lastErrorMessage = err.message || 'Network error.'
+      }
+    }
+
+    throw new Error(lastErrorMessage || 'All Gemini model endpoints failed.')
+  }
   const handleWhatIf = async () => {
     if (!whatIfPrompt || !whatIfPrompt.trim()) return
 
@@ -92,18 +147,16 @@ export default function App() {
 
     setIsGenerating(true)
 
-    // Primary and fallback models to cycle through if high demand or deprecation occurs
-    const candidateModels = [
-      'gemini-3.8-flash',
-      'gemini-2.5-pro',
-      'gemini-2.5-flash',
-      'gemini-1.5-pro',
-      'gemini-1.5-flash'
-    ]
+    const bibleContext = storyBible.length > 0
+      ? storyBible.map((entry: any) => `- ${entry.name}: ${entry.content || entry.description || entry.text || ''}`).join('\n')
+      : 'No active Story Bible rules defined.'
 
     const promptText = `You are an elite creative writing mentor and master narrative strategist.
 
-WRITER'S SAMPLE CANVAS (ANALYZE THIS FOR STYLE, VOICE, VOCABULARY & RHYTHM):
+STORY BIBLE & CHARACTER RULES:
+${bibleContext}
+
+WRITER'S SAMPLE CANVAS:
 """
 ${storyCanvas || 'No active scene context provided.'}
 """
@@ -111,53 +164,13 @@ ${storyCanvas || 'No active scene context provided.'}
 WRITER'S "WHAT IF?" EXPLORATION:
 "${whatIfPrompt}"
 
-TASK & STYLE-CLONING DIRECTIVE:
-1. VOICE & STYLE ANALYSIS: Analyze the sample canvas above for its exact prose style, sentence length, atmospheric mood, vocabulary level, and sensory detail.
-2. LANGUAGE & SCRIPT CLONING: Detect the exact language and script used (e.g., Hindi in Devanagari, Hinglish, or English). You MUST generate all responses in that EXACT SAME language and script. If the canvas/question is in Hindi, respond strictly in rich, authentic Hindi.
-3. NARRATIVE GENERATION: Develop 3 compelling, dramatic, and immersive plot directions based on the writer's "What If?" question. Each option must match the writer's voice so naturally that it feels like their own internal creative instinct speaking.
+TASK:
+1. Detect exact language and script (Hindi/Devanagari, Hinglish, English) and respond in that same language.
+2. Respect Story Bible consistency.
+3. Provide exactly 3 numbered alternate plot options (1., 2., 3.), each a detailed 3-5 sentence paragraph.`
 
-FORMATTING RULE:
-Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a detailed, atmospheric paragraph (3 to 5 sentences long) full of narrative tension, character emotion, and vivid storytelling possibilities. Avoid generic or superficial summaries.
-
-1. [Style-Matched Detailed Plot Branch 1]
-2. [Style-Matched Detailed Plot Branch 2]
-3. [Style-Matched Detailed Plot Branch 3]`
-
-    let generatedText = ''
-    let lastErrorMessage = ''
-
-    // Loop through candidate models until one succeeds
-    for (const model of candidateModels) {
-      try {
-        console.log(`Attempting generation with model: ${model}`)
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: promptText }] }],
-            }),
-          }
-        )
-
-        const data = await response.json()
-
-        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          generatedText = data.candidates[0].content.parts[0].text
-          console.log(`Success with model: ${model}`)
-          break // Exit loop as soon as a model succeeds
-        } else {
-          lastErrorMessage = data.error?.message || `Model ${model} unavailable.`
-          console.warn(`Model ${model} failed (${response.status}):`, lastErrorMessage)
-        }
-      } catch (err: any) {
-        lastErrorMessage = err.message || 'Network error.'
-        console.warn(`Network error on model ${model}:`, err)
-      }
-    }
-
-    if (generatedText) {
+    try {
+      const generatedText = await callGeminiAPI(promptText, cleanKey)
       const branches = generatedText
         .split(/\n(?=[1-3]\.\s*)/)
         .map((branch: string) => branch.replace(/^[1-3]\.\s*/, '').trim())
@@ -165,11 +178,11 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
         .slice(0, 3)
 
       setWhatIfBranches(branches)
-    } else {
-      alert(`What If Error: All model endpoints are currently unavailable. (${lastErrorMessage})`)
+    } catch (err: any) {
+      alert(`What If Error: ${err.message}`)
+    } finally {
+      setIsGenerating(false)
     }
-
-    setIsGenerating(false)
   }
   const handleAutoContinue = async () => {
     if (!storyCanvas || !storyCanvas.trim()) {
@@ -191,67 +204,34 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
 
     setIsGenerating(true)
 
-    const candidateModels = [
-      'gemini-3.8-flash',
-      'gemini-2.5-pro',
-      'gemini-2.5-flash',
-      'gemini-1.5-pro',
-      'gemini-1.5-flash'
-    ]
-
-    // Grab up to the last 3,000 characters from the active scene canvas
     const contextSnippet = storyCanvas.slice(-3000)
+    const bibleContext = storyBible.length > 0
+      ? storyBible.map((entry: any) => `- ${entry.name}: ${entry.content || entry.description || entry.text || ''}`).join('\n')
+      : 'No active Story Bible rules defined.'
 
     const promptText = `You are an elite creative writing partner and narrative strategist.
 
-CURRENT SCENE CONTEXT (UP TO PREVIOUS PARAGRAPHS):
+STORY BIBLE & CHARACTER RULES:
+${bibleContext}
+
+CURRENT SCENE CONTEXT:
 """
 ${contextSnippet}
 """
 
 DIRECTIVE:
-1. CONTINUATION TASK: Pick up the narrative smoothly from the exact ending word/punctuation of the context above.
-2. VOICE & LANGUAGE CLONING: Identify the precise language (e.g., Hindi in Devanagari, Hinglish, or English), tone, sentence length, and sensory atmosphere. Generate the output in that EXACT same language and script.
-3. OUTPUT SCOPE: Write 1 to 2 immersive, atmospheric narrative paragraphs (3–6 sentences total) that advance character action, dialogue, or suspense.
-4. NO META PROSE: Return ONLY the new narrative continuation text. Do NOT include greetings, titles, or tags like "Continuation:". Start directly with the prose.`
+1. Continue narrative smoothly from the exact ending word of the context.
+2. Match the exact language, script, tone, and prose style.
+3. Write 1 to 2 narrative paragraphs (3–6 sentences total). Return ONLY prose.`
 
-    let generatedText = ''
-    let lastErrorMessage = ''
-
-    for (const model of candidateModels) {
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: promptText }] }],
-            }),
-          }
-        )
-
-        const data = await response.json()
-
-        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          generatedText = data.candidates[0].content.parts[0].text
-          break
-        } else {
-          lastErrorMessage = data.error?.message || `Model ${model} unavailable.`
-        }
-      } catch (err: any) {
-        lastErrorMessage = err.message || 'Network error.'
-      }
-    }
-
-    if (generatedText) {
-      // Cleanly append the continuation to the active scene canvas
+    try {
+      const generatedText = await callGeminiAPI(promptText, cleanKey)
       setStoryCanvas((prev) => `${prev.trimEnd()}\n\n${generatedText.trim()}`)
-    } else {
-      alert(`Auto-Continue Error: (${lastErrorMessage})`)
+    } catch (err: any) {
+      alert(`Auto-Continue Error: ${err.message}`)
+    } finally {
+      setIsGenerating(false)
     }
-
-    setIsGenerating(false)
   }
   const handleGenerateAIContinuation = async () => {
     if (!apiKey || !apiKey.trim()) {
