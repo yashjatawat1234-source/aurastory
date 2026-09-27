@@ -78,7 +78,6 @@ export default function App() {
   const handleWhatIf = async () => {
     if (!whatIfPrompt || !whatIfPrompt.trim()) return
 
-    // Priority order: 1. State/Header input, 2. Environment Variable, 3. Local Storage fallback
     const cleanKey = (
       apiKey ||
       import.meta.env.VITE_GEMINI_API_KEY ||
@@ -92,8 +91,17 @@ export default function App() {
     }
 
     setIsGenerating(true)
-    try {
-      const promptText = `You are an elite creative writing mentor and master narrative strategist.
+
+    // Primary and fallback models to cycle through if high demand or deprecation occurs
+    const candidateModels = [
+      'gemini-3.8-flash',
+      'gemini-2.5-pro',
+      'gemini-2.5-flash',
+      'gemini-1.5-pro',
+      'gemini-1.5-flash'
+    ]
+
+    const promptText = `You are an elite creative writing mentor and master narrative strategist.
 
 WRITER'S SAMPLE CANVAS (ANALYZE THIS FOR STYLE, VOICE, VOCABULARY & RHYTHM):
 """
@@ -115,38 +123,53 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
 2. [Style-Matched Detailed Plot Branch 2]
 3. [Style-Matched Detailed Plot Branch 3]`
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cleanKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: promptText }] }],
-          }),
+    let generatedText = ''
+    let lastErrorMessage = ''
+
+    // Loop through candidate models until one succeeds
+    for (const model of candidateModels) {
+      try {
+        console.log(`Attempting generation with model: ${model}`)
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: promptText }] }],
+            }),
+          }
+        )
+
+        const data = await response.json()
+
+        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          generatedText = data.candidates[0].content.parts[0].text
+          console.log(`Success with model: ${model}`)
+          break // Exit loop as soon as a model succeeds
+        } else {
+          lastErrorMessage = data.error?.message || `Model ${model} unavailable.`
+          console.warn(`Model ${model} failed (${response.status}):`, lastErrorMessage)
         }
-      )
-
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Failed to generate style-matched plot branches.')
+      } catch (err: any) {
+        lastErrorMessage = err.message || 'Network error.'
+        console.warn(`Network error on model ${model}:`, err)
       }
-
-      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
-      if (generatedText) {
-        const branches = generatedText
-          .split(/\n(?=[1-3]\.\s*)/)
-          .map((branch: string) => branch.replace(/^[1-3]\.\s*/, '').trim())
-          .filter((branch: string) => branch.length > 0)
-          .slice(0, 3)
-
-        setWhatIfBranches(branches)
-      }
-    } catch (err: any) {
-      console.error('What If Generation Error:', err)
-      alert(`What If Error: ${err.message || 'Failed to generate plot branches.'}`)
-    } finally {
-      setIsGenerating(false)
     }
+
+    if (generatedText) {
+      const branches = generatedText
+        .split(/\n(?=[1-3]\.\s*)/)
+        .map((branch: string) => branch.replace(/^[1-3]\.\s*/, '').trim())
+        .filter((branch: string) => branch.length > 0)
+        .slice(0, 3)
+
+      setWhatIfBranches(branches)
+    } else {
+      alert(`What If Error: All model endpoints are currently unavailable. (${lastErrorMessage})`)
+    }
+
+    setIsGenerating(false)
   }
   const handleGenerateAIContinuation = async () => {
     if (!apiKey || !apiKey.trim()) {
