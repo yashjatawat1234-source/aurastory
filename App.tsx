@@ -78,14 +78,21 @@ export default function App() {
   const handleWhatIf = async () => {
     if (!whatIfPrompt || !whatIfPrompt.trim()) return
 
-    if (!apiKey || !apiKey.trim()) {
+    // Priority order: 1. State/Header input, 2. Environment Variable, 3. Local Storage fallback
+    const cleanKey = (
+      apiKey ||
+      import.meta.env.VITE_GEMINI_API_KEY ||
+      localStorage.getItem('aurastory_gemini_key') ||
+      ''
+    ).trim()
+
+    if (!cleanKey) {
       alert('Please enter your Gemini API Key in the top header field.')
       return
     }
 
     setIsGenerating(true)
     try {
-      const cleanKey = apiKey.trim()
       const promptText = `You are an elite creative writing mentor and master narrative strategist.
 
 WRITER'S SAMPLE CANVAS (ANALYZE THIS FOR STYLE, VOICE, VOCABULARY & RHYTHM):
