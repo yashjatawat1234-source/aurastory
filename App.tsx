@@ -76,11 +76,11 @@ export default function App() {
     document.body.removeChild(link)
   }
   const callGeminiAPI = async (promptText: string, cleanKey: string): Promise<string> => {
-    // Primary active models on v1beta
+    // Current active Gemini endpoints
     const candidateModels = [
+      'gemini-3.8-flash',
       'gemini-2.5-flash',
-      'gemini-2.5-pro',
-      'gemini-2.0-flash'
+      'gemini-2.5-pro'
     ]
 
     const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -107,18 +107,17 @@ export default function App() {
 
         const errorMsg = data.error?.message || `Status ${response.status}`
 
-        // If it's an API Key or Quota issue, stop immediately and report the true error
+        // Stop immediately ONLY if the issue is API key validity or quota limits
         if (
-          response.status === 400 || 
-          response.status === 401 || 
-          response.status === 403 || 
-          errorMsg.toLowerCase().includes('key') || 
+          response.status === 401 ||
+          response.status === 403 ||
+          errorMsg.toLowerCase().includes('key') ||
           errorMsg.toLowerCase().includes('quota')
         ) {
           throw new Error(`[${model}] ${errorMsg}`)
         }
 
-        // Retry once on temporary high-demand (503 / 429)
+        // Pause and retry once if Google returns high demand (503 or 429)
         if (response.status === 503 || response.status === 429) {
           await delay(1200)
           let retryRes = await fetch(
