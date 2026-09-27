@@ -303,7 +303,9 @@ DIRECTIVE:
       '• Future Chapter Idea: Jack reveals a hidden cipher inside his medallion.'
     )
   })
-
+  useEffect(() => {
+    localStorage.setItem('aurastory_scratchpad', scratchpadText)
+  }, [scratchpadText])
   const [storyBible, setStoryBible] = useState<BibleEntry[]>(() => {
     const saved = localStorage.getItem('aurastory_bible')
     return saved
