@@ -171,6 +171,88 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
 
     setIsGenerating(false)
   }
+  const handleAutoContinue = async () => {
+    if (!storyCanvas || !storyCanvas.trim()) {
+      alert('Please write or paste some text on the canvas first!')
+      return
+    }
+
+    const cleanKey = (
+      apiKey ||
+      import.meta.env.VITE_GEMINI_API_KEY ||
+      localStorage.getItem('aurastory_gemini_key') ||
+      ''
+    ).trim()
+
+    if (!cleanKey) {
+      alert('Please enter your Gemini API Key in the top header field.')
+      return
+    }
+
+    setIsGenerating(true)
+
+    const candidateModels = [
+      'gemini-3.8-flash',
+      'gemini-2.5-pro',
+      'gemini-2.5-flash',
+      'gemini-1.5-pro',
+      'gemini-1.5-flash'
+    ]
+
+    // Grab up to the last 3,000 characters from the active scene canvas
+    const contextSnippet = storyCanvas.slice(-3000)
+
+    const promptText = `You are an elite creative writing partner and narrative strategist.
+
+CURRENT SCENE CONTEXT (UP TO PREVIOUS PARAGRAPHS):
+"""
+${contextSnippet}
+"""
+
+DIRECTIVE:
+1. CONTINUATION TASK: Pick up the narrative smoothly from the exact ending word/punctuation of the context above.
+2. VOICE & LANGUAGE CLONING: Identify the precise language (e.g., Hindi in Devanagari, Hinglish, or English), tone, sentence length, and sensory atmosphere. Generate the output in that EXACT same language and script.
+3. OUTPUT SCOPE: Write 1 to 2 immersive, atmospheric narrative paragraphs (3–6 sentences total) that advance character action, dialogue, or suspense.
+4. NO META PROSE: Return ONLY the new narrative continuation text. Do NOT include greetings, titles, or tags like "Continuation:". Start directly with the prose.`
+
+    let generatedText = ''
+    let lastErrorMessage = ''
+
+    for (const model of candidateModels) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: promptText }] }],
+            }),
+          }
+        )
+
+        const data = await response.json()
+
+        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          generatedText = data.candidates[0].content.parts[0].text
+          break
+        } else {
+          lastErrorMessage = data.error?.message || `Model ${model} unavailable.`
+        }
+      } catch (err: any) {
+        lastErrorMessage = err.message || 'Network error.'
+      }
+    }
+
+    if (generatedText) {
+      // Cleanly append the continuation to the active scene canvas
+      setStoryCanvas((prev) => `${prev.trimEnd()}\n\n${generatedText.trim()}`)
+    } else {
+      alert(`Auto-Continue Error: (${lastErrorMessage})`)
+    }
+
+    setIsGenerating(false)
+  }
   const handleGenerateAIContinuation = async () => {
     if (!apiKey || !apiKey.trim()) {
       alert('Please enter your Gemini API Key in the header field.')
@@ -746,7 +828,7 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
               Active Scene Canvas
             </h2>
             <button
-              onClick={handleGenerateAIContinuation}
+              onClick={handleAutoContinue}
               disabled={isGenerating}
               className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white rounded-lg text-sm transition-colors"
             >
