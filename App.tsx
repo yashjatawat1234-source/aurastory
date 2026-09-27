@@ -76,22 +76,20 @@ export default function App() {
     document.body.removeChild(link)
   }
   const callGeminiAPI = async (promptText: string, cleanKey: string): Promise<string> => {
-    // Targets both v1beta and stable v1 endpoints with confirmed Google model strings
-    const targets = [
-      { apiVersion: 'v1beta', model: 'gemini-2.0-flash' },
-      { apiVersion: 'v1', model: 'gemini-1.5-flash' },
-      { apiVersion: 'v1', model: 'gemini-1.5-pro' },
-      { apiVersion: 'v1beta', model: 'gemini-1.5-flash' },
-      { apiVersion: 'v1beta', model: 'gemini-1.5-pro' }
+    // Primary active models on v1beta
+    const candidateModels = [
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
+      'gemini-2.0-flash'
     ]
 
     const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
     let lastErrorMessage = ''
 
-    for (const target of targets) {
+    for (const model of candidateModels) {
       try {
         let response = await fetch(
-          `https://generativelanguage.googleapis.com/${target.apiVersion}/models/${target.model}:generateContent?key=${cleanKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -101,11 +99,30 @@ export default function App() {
           }
         )
 
-        // Retry once on 503 (Busy) or 429 (Rate limit)
+        const data = await response.json()
+
+        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          return data.candidates[0].content.parts[0].text
+        }
+
+        const errorMsg = data.error?.message || `Status ${response.status}`
+
+        // If it's an API Key or Quota issue, stop immediately and report the true error
+        if (
+          response.status === 400 || 
+          response.status === 401 || 
+          response.status === 403 || 
+          errorMsg.toLowerCase().includes('key') || 
+          errorMsg.toLowerCase().includes('quota')
+        ) {
+          throw new Error(`[${model}] ${errorMsg}`)
+        }
+
+        // Retry once on temporary high-demand (503 / 429)
         if (response.status === 503 || response.status === 429) {
           await delay(1200)
-          response = await fetch(
-            `https://generativelanguage.googleapis.com/${target.apiVersion}/models/${target.model}:generateContent?key=${cleanKey}`,
+          let retryRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -114,21 +131,20 @@ export default function App() {
               }),
             }
           )
+          let retryData = await retryRes.json()
+          if (retryRes.ok && retryData.candidates?.[0]?.content?.parts?.[0]?.text) {
+            return retryData.candidates[0].content.parts[0].text
+          }
         }
 
-        const data = await response.json()
-
-        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          return data.candidates[0].content.parts[0].text
-        } else {
-          lastErrorMessage = data.error?.message || `Model ${target.model} status ${response.status}`
-        }
+        lastErrorMessage = `[${model}] ${errorMsg}`
       } catch (err: any) {
+        if (err.message?.startsWith('[')) throw err
         lastErrorMessage = err.message || 'Network error.'
       }
     }
 
-    throw new Error(lastErrorMessage || 'All Gemini API targets failed.')
+    throw new Error(lastErrorMessage || 'All Gemini model endpoints failed.')
   }
   const handleWhatIf = async () => {
     if (!whatIfPrompt || !whatIfPrompt.trim()) return
