@@ -76,23 +76,22 @@ export default function App() {
     document.body.removeChild(link)
   }
   const callGeminiAPI = async (promptText: string, cleanKey: string): Promise<string> => {
-    // Official active Gemini model strings for v1beta REST endpoint
-    const candidateModels = [
-      'gemini-2.5-flash',
-      'gemini-2.5-pro',
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
-      'gemini-1.5-pro'
+    // Targets both v1beta and stable v1 endpoints with confirmed Google model strings
+    const targets = [
+      { apiVersion: 'v1beta', model: 'gemini-2.0-flash' },
+      { apiVersion: 'v1', model: 'gemini-1.5-flash' },
+      { apiVersion: 'v1', model: 'gemini-1.5-pro' },
+      { apiVersion: 'v1beta', model: 'gemini-1.5-flash' },
+      { apiVersion: 'v1beta', model: 'gemini-1.5-pro' }
     ]
 
     const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
     let lastErrorMessage = ''
 
-    for (const model of candidateModels) {
+    for (const target of targets) {
       try {
-        console.log(`[AuraStory AI] Requesting model: ${model}`)
         let response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
+          `https://generativelanguage.googleapis.com/${target.apiVersion}/models/${target.model}:generateContent?key=${cleanKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -102,12 +101,11 @@ export default function App() {
           }
         )
 
-        // Pause and retry once if Google returns high demand (503) or rate limit (429)
+        // Retry once on 503 (Busy) or 429 (Rate limit)
         if (response.status === 503 || response.status === 429) {
-          console.warn(`[AuraStory AI] Model ${model} busy (${response.status}). Retrying in 1.2s...`)
           await delay(1200)
           response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
+            `https://generativelanguage.googleapis.com/${target.apiVersion}/models/${target.model}:generateContent?key=${cleanKey}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -121,19 +119,16 @@ export default function App() {
         const data = await response.json()
 
         if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          console.log(`[AuraStory AI] Success with model: ${model}`)
           return data.candidates[0].content.parts[0].text
         } else {
-          lastErrorMessage = data.error?.message || `Model ${model} status ${response.status}`
-          console.warn(`[AuraStory AI] Model ${model} failed:`, lastErrorMessage)
+          lastErrorMessage = data.error?.message || `Model ${target.model} status ${response.status}`
         }
       } catch (err: any) {
         lastErrorMessage = err.message || 'Network error.'
-        console.warn(`[AuraStory AI] Network error on model ${model}:`, err)
       }
     }
 
-    throw new Error(lastErrorMessage || 'All Gemini model endpoints failed.')
+    throw new Error(lastErrorMessage || 'All Gemini API targets failed.')
   }
   const handleWhatIf = async () => {
     if (!whatIfPrompt || !whatIfPrompt.trim()) return
