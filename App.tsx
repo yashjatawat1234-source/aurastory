@@ -76,12 +76,13 @@ export default function App() {
     document.body.removeChild(link)
   }
   const callGeminiAPI = async (promptText: string, cleanKey: string): Promise<string> => {
-    // Verified active Gemini v1beta endpoints
+    // Official active Gemini model strings for v1beta REST endpoint
     const candidateModels = [
-      'gemini-3.8-flash',
       'gemini-2.5-flash',
+      'gemini-2.5-pro',
       'gemini-2.0-flash',
-      'gemini-1.5-flash-latest'
+      'gemini-1.5-flash',
+      'gemini-1.5-pro'
     ]
 
     const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -89,6 +90,7 @@ export default function App() {
 
     for (const model of candidateModels) {
       try {
+        console.log(`[AuraStory AI] Requesting model: ${model}`)
         let response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
           {
@@ -100,10 +102,10 @@ export default function App() {
           }
         )
 
-        // Retry once on 503 (High Demand) or 429 (Rate Limit)
+        // Pause and retry once if Google returns high demand (503) or rate limit (429)
         if (response.status === 503 || response.status === 429) {
-          console.warn(`Model ${model} busy. Retrying in 1s...`)
-          await delay(1000)
+          console.warn(`[AuraStory AI] Model ${model} busy (${response.status}). Retrying in 1.2s...`)
+          await delay(1200)
           response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
             {
@@ -119,12 +121,15 @@ export default function App() {
         const data = await response.json()
 
         if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          console.log(`[AuraStory AI] Success with model: ${model}`)
           return data.candidates[0].content.parts[0].text
         } else {
-          lastErrorMessage = data.error?.message || `Model ${model} returned error status ${response.status}`
+          lastErrorMessage = data.error?.message || `Model ${model} status ${response.status}`
+          console.warn(`[AuraStory AI] Model ${model} failed:`, lastErrorMessage)
         }
       } catch (err: any) {
         lastErrorMessage = err.message || 'Network error.'
+        console.warn(`[AuraStory AI] Network error on model ${model}:`, err)
       }
     }
 
