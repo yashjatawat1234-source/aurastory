@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react'
 // @ts-ignore
 import './styles.css'
 
-interface Scene {
+export interface Scene {
   id: string
   title: string
   content: string
 }
 
-interface Chapter {
+export interface Chapter {
   id: string
   title: string
   scenes: Scene[]
@@ -22,6 +22,8 @@ interface BibleEntry {
 }
 
 export default function App() {
+  const [isWorkspaceActive, setIsWorkspaceActive] = useState<boolean>(false)
+  const [onboardingConcept, setOnboardingConcept] = useState<string>('')
   // 1. Chapters & Scenes State
   const [chapters, setChapters] = useState<Chapter[]>(() => {
     const saved = localStorage.getItem('aurastory_chapters')
@@ -150,7 +152,7 @@ export default function App() {
 
     const cleanKey = (
       apiKey ||
-      import.meta.env.VITE_GEMINI_API_KEY ||
+      (import.meta as any).env?.VITE_GEMINI_API_KEY ||
       localStorage.getItem('aurastory_gemini_key') ||
       ''
     ).trim()
@@ -207,7 +209,7 @@ TASK:
 
     const cleanKey = (
       apiKey ||
-      import.meta.env.VITE_GEMINI_API_KEY ||
+      (import.meta as any).env?.VITE_GEMINI_API_KEY ||
       localStorage.getItem('aurastory_gemini_key') ||
       ''
     ).trim()
@@ -351,12 +353,69 @@ DIRECTIVE:
   }
   // Gemini State
   const [apiKey, setApiKey] = useState<string>(
-    import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('aurastory_gemini_key') || ''
+    (import.meta as any).env?.VITE_GEMINI_API_KEY || localStorage.getItem('aurastory_gemini_key') || ''
   )
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
   const [whatIfInput, setWhatIfInput] = useState<string>('')
   const [whatIfBranches, setWhatIfBranches] = useState<string[]>([])
   const [newChapterTitle, setNewChapterTitle] = useState<string>('')
+  // Switch Active Scene (Loads that scene's content onto the canvas)
+  const handleSelectScene = (sceneId: string) => {
+    for (const ch of chapters) {
+      const found = ch.scenes.find((sc) => sc.id === sceneId)
+      if (found) {
+        setActiveSceneId(sceneId)
+        setStoryCanvas(found.content)
+        break
+      }
+    }
+  }
+
+  // Create New Chapter
+  const handleAddChapter = () => {
+    if (!newChapterTitle.trim()) return
+    const newCh: Chapter = {
+      id: `ch-${Date.now()}`,
+      title: newChapterTitle.trim(),
+      scenes: []
+    }
+    setChapters((prev) => [...prev, newCh])
+    setNewChapterTitle('')
+  }
+
+  // Create New Scene inside a Chapter
+  const handleAddScene = (chapterId: string) => {
+    const newScId = `sc-${Date.now()}`
+    setChapters((prev) =>
+      prev.map((ch) => {
+        if (ch.id === chapterId) {
+          const sceneNum = ch.scenes.length + 1
+          const newScene: Scene = {
+            id: newScId,
+            title: `Scene ${sceneNum}: New Scene`,
+            content: ''
+          }
+          return { ...ch, scenes: [...ch.scenes, newScene] }
+        }
+        return ch
+      })
+    )
+    setActiveSceneId(newScId)
+    setStoryCanvas('')
+  }
+
+  // Delete Scene
+  const handleDeleteScene = (chapterId: string, sceneId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setChapters((prev) =>
+      prev.map((ch) => {
+        if (ch.id === chapterId) {
+          return { ...ch, scenes: ch.scenes.filter((sc) => sc.id !== sceneId) }
+        }
+        return ch
+      })
+    )
+  }
 
   // Sync active canvas changes back to the active scene object
   useEffect(() => {
@@ -386,49 +445,6 @@ DIRECTIVE:
   useEffect(() => {
     localStorage.setItem('aurastory_gemini_key', apiKey)
   }, [apiKey])
-
-  const handleSelectScene = (scene: Scene) => {
-    setActiveSceneId(scene.id)
-    setStoryCanvas(scene.content)
-  }
-
-  const handleAddChapter = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newChapterTitle.trim()) return
-
-    const newChId = `ch-${Date.now()}`
-    const newScId = `sc-${Date.now()}`
-    const newCh: Chapter = {
-      id: newChId,
-      title: newChapterTitle,
-      scenes: [{ id: newScId, title: 'Scene 1: Introduction', content: 'Write scene draft here...' }],
-    }
-
-    setChapters([...chapters, newCh])
-    setNewChapterTitle('')
-    setActiveSceneId(newScId)
-    setStoryCanvas('Write scene draft here...')
-  }
-
-  const handleAddScene = (chapterId: string) => {
-    const newScId = `sc-${Date.now()}`
-    const newSceneName = prompt('Enter Scene Title:', 'New Scene')
-    if (!newSceneName) return
-
-    setChapters((prev: Chapter[]) =>
-      prev.map((ch: Chapter) => {
-        if (ch.id === chapterId) {
-          return {
-            ...ch,
-            scenes: [...ch.scenes, { id: newScId, title: newSceneName, content: '' }],
-          }
-        }
-        return ch
-      })
-    )
-    setActiveSceneId(newScId)
-    setStoryCanvas('')
-  }
 
   const handleExportManuscript = () => {
     let fullText = `# AuraStory Compiled Manuscript\n\n`
@@ -540,6 +556,48 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
       setIsGenerating(false)
     }
   }
+  const handleLaunchWorkspace = () => {
+    if (onboardingConcept.trim()) {
+      setScratchpadText((prev) =>
+        prev
+          ? `${prev}\n\n--- Project Premise ---\n${onboardingConcept.trim()}`
+          : `--- Project Premise ---\n${onboardingConcept.trim()}`
+      )
+    }
+    setIsWorkspaceActive(true)
+  }
+  if (!isWorkspaceActive) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6">
+        <div className="max-w-2xl w-full text-center space-y-6">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent">
+            AuraStory Studio
+          </h1>
+          <p className="text-slate-400 text-lg">
+            What story are we bringing to life today?
+          </p>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl text-left">
+            <textarea
+              value={onboardingConcept}
+              onChange={(e) => setOnboardingConcept(e.target.value)}
+              className="w-full bg-transparent text-slate-200 resize-none focus:outline-none placeholder-slate-500 min-h-[120px]"
+              placeholder="Describe your project concept, tone, characters, or audio drama premise..."
+            />
+            <div className="flex justify-between items-center pt-3 border-t border-slate-800">
+              <span className="text-xs text-slate-500">AI Narrative Engine Ready</span>
+              <button
+                onClick={handleLaunchWorkspace}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-emerald-900/30"
+              >
+                Open Workspace →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans">
@@ -592,7 +650,7 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
                     {ch.scenes.map((sc: Scene) => (
                       <button
                         key={sc.id}
-                        onClick={() => handleSelectScene(sc)}
+                        onClick={() => handleSelectScene(sc.id)}
                         className={`w-full text-left px-2 py-1 rounded text-xs transition-colors flex items-center justify-between ${activeSceneId === sc.id
                           ? 'bg-emerald-950 text-emerald-300 font-medium border border-emerald-800'
                           : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
@@ -705,8 +763,8 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
             <textarea
               value={scratchpadText}
               onChange={(e) => setScratchpadText(e.target.value)}
-              placeholder="The neon lights flickered across the wet pavement as the signal dropped."
-              className="..." // keep your existing className styles
+              className="w-full min-h-[250px] bg-slate-950/50 border border-slate-800 rounded-lg p-3 text-slate-200 text-sm focus:outline-none focus:border-emerald-500/50 resize-y"
+              placeholder="Jot down notes, character ideas, or plot points here..."
             />
           </div>
         )}
