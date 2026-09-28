@@ -24,6 +24,17 @@ interface BibleEntry {
 export default function App() {
   const [isWorkspaceActive, setIsWorkspaceActive] = useState<boolean>(false)
   const [onboardingConcept, setOnboardingConcept] = useState<string>('')
+  // Onboarding Discovery State
+  const [onboardingStage, setOnboardingStage] = useState<'PITCH' | 'QUESTIONS' | 'FORMAT_SELECT'>('PITCH')
+  const [projectFormat, setProjectFormat] = useState<'screenplay' | 'audio_drama' | 'novel'>('screenplay')
+
+  // Discovery Answers State
+  const [discoveryAnswers, setDiscoveryAnswers] = useState({
+    protagonist: '',
+    conflict: '',
+    worldTone: '',
+    keyTwist: ''
+  })
   // 1. Chapters & Scenes State
   const [chapters, setChapters] = useState<Chapter[]>(() => {
     const saved = localStorage.getItem('aurastory_chapters')
@@ -557,48 +568,220 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
     }
   }
   const handleLaunchWorkspace = () => {
-    if (onboardingConcept.trim()) {
-      setScratchpadText((prev) =>
-        prev
-          ? `${prev}\n\n--- Project Premise ---\n${onboardingConcept.trim()}`
-          : `--- Project Premise ---\n${onboardingConcept.trim()}`
-      )
+    // 1. Build structured Scratchpad summary
+    const summaryHeader = `=== PROJECT SUMMARY (${projectFormat.toUpperCase().replace('_', ' ')}) ===\n`
+    const premiseBlock = `\n--- Initial Premise ---\n${onboardingConcept.trim()}\n`
+
+    const answersBlock = `\n--- Narrative Foundations ---\n` +
+      `• Protagonist & Goal: ${discoveryAnswers.protagonist || 'N/A'}\n` +
+      `• Core Conflict: ${discoveryAnswers.conflict || 'N/A'}\n` +
+      `• World & Tone: ${discoveryAnswers.worldTone || 'N/A'}\n` +
+      `• Key Twist / Pivot: ${discoveryAnswers.keyTwist || 'N/A'}\n`
+
+    const formattedNotes = `${summaryHeader}${premiseBlock}${answersBlock}`
+
+    setScratchpadText((prev) => prev ? `${prev}\n\n${formattedNotes}` : formattedNotes)
+
+    // 2. Pre-fill initial Canvas hook according to selected format
+    let initialCanvasText = ''
+    if (projectFormat === 'screenplay') {
+      initialCanvasText = `EXT. CITY STREET - NIGHT\n\nRain glimmers under neon signs. A shadowy figure moves swiftly along the alleyway.\n\nPROTAGONIST\n(whispering)\nWe don't have much time.`
+    } else if (projectFormat === 'audio_drama') {
+      initialCanvasText = `[SFX: Heavy footsteps echoing on wet pavement]\n[SFX: Distant siren wailing]\n\nNARRATOR (V.O.)\nThe transmission dropped at midnight.\n\n[MUSIC: Low ambient synthesizer swell builds]`
+    } else {
+      initialCanvasText = `The city was unusually quiet for a Friday night, the kind of stillness that always preceded trouble. Rain streaked across the glass in jagged lines...`
     }
+
+    // Update active scene canvas
+    if (chapters.length > 0 && chapters[0].scenes.length > 0) {
+      const updatedChapters = [...chapters]
+      updatedChapters[0].scenes[0].content = initialCanvasText
+      setChapters(updatedChapters)
+    }
+
     setIsWorkspaceActive(true)
   }
   if (!isWorkspaceActive) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6">
         <div className="max-w-2xl w-full text-center space-y-6">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent">
-            AuraStory Studio
-          </h1>
-          <p className="text-slate-400 text-lg">
-            What story are we bringing to life today?
-          </p>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl text-left">
-            <textarea
-              value={onboardingConcept}
-              onChange={(e) => setOnboardingConcept(e.target.value)}
-              className="w-full bg-transparent text-slate-200 resize-none focus:outline-none placeholder-slate-500 min-h-[120px]"
-              placeholder="Describe your project concept, tone, characters, or audio drama premise..."
-            />
-            <div className="flex justify-between items-center pt-3 border-t border-slate-800">
-              <span className="text-xs text-slate-500">AI Narrative Engine Ready</span>
-              <button
-                onClick={handleLaunchWorkspace}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-emerald-900/30"
-              >
-                Open Workspace →
-              </button>
-            </div>
+          {/* Header Branding */}
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent">
+              AuraStory Studio
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">
+              {onboardingStage === 'PITCH' && "Step 1 of 3: Core Story Premise"}
+              {onboardingStage === 'QUESTIONS' && "Step 2 of 3: Deep Narrative Discovery"}
+              {onboardingStage === 'FORMAT_SELECT' && "Step 3 of 3: Select Workspace Format"}
+            </p>
           </div>
+
+          {/* STAGE 1: INITIAL PITCH */}
+          {onboardingStage === 'PITCH' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl text-left space-y-4">
+              <label className="block text-sm font-medium text-slate-300">
+                What story are we bringing to life today?
+              </label>
+              <textarea
+                value={onboardingConcept}
+                onChange={(e) => setOnboardingConcept(e.target.value)}
+                className="w-full bg-slate-950/60 border border-slate-800 rounded-lg p-3 text-slate-200 resize-none focus:outline-none focus:border-emerald-500/50 placeholder-slate-500 min-h-[120px]"
+                placeholder="Describe your project concept, main idea, tone, or opening hook..."
+              />
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => setOnboardingStage('QUESTIONS')}
+                  disabled={!onboardingConcept.trim()}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-emerald-900/30"
+                >
+                  Continue to Questions →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STAGE 2: DEEP QUESTIONS */}
+          {onboardingStage === 'QUESTIONS' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl text-left space-y-4">
+              <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wider">Story Discovery</p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">1. Who is the main protagonist and what is their immediate goal?</label>
+                  <input
+                    type="text"
+                    value={discoveryAnswers.protagonist}
+                    onChange={(e) => setDiscoveryAnswers({ ...discoveryAnswers, protagonist: e.target.value })}
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50"
+                    placeholder="e.g., Detective Miles searching for a missing transmission key"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">2. What major obstacle or antagonist stands in their way?</label>
+                  <input
+                    type="text"
+                    value={discoveryAnswers.conflict}
+                    onChange={(e) => setDiscoveryAnswers({ ...discoveryAnswers, conflict: e.target.value })}
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50"
+                    placeholder="e.g., A corrupt syndicate enforcing a city-wide blackout"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">3. Describe the atmosphere or core setting of the story:</label>
+                  <input
+                    type="text"
+                    value={discoveryAnswers.worldTone}
+                    onChange={(e) => setDiscoveryAnswers({ ...discoveryAnswers, worldTone: e.target.value })}
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50"
+                    placeholder="e.g., Rain-slicked dystopian cyberpunk city, dark and suspenseful"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">4. Is there a secret or twist driving early chapters?</label>
+                  <input
+                    type="text"
+                    value={discoveryAnswers.keyTwist}
+                    onChange={(e) => setDiscoveryAnswers({ ...discoveryAnswers, keyTwist: e.target.value })}
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50"
+                    placeholder="e.g., The missing cipher is hidden inside the protagonist's medallion"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center pt-3 border-t border-slate-800">
+                <button
+                  onClick={() => setOnboardingStage('PITCH')}
+                  className="text-xs text-slate-400 hover:text-slate-200"
+                >
+                  ← Back
+                </button>
+                <button
+                  onClick={() => setOnboardingStage('FORMAT_SELECT')}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-emerald-900/30"
+                >
+                  Choose Format →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STAGE 3: FORMAT SELECTION */}
+          {onboardingStage === 'FORMAT_SELECT' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl text-left space-y-5">
+              <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wider">Choose Workspace Layout</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setProjectFormat('screenplay')}
+                  className={`p-4 rounded-xl border text-left transition-all ${projectFormat === 'screenplay'
+                    ? 'border-emerald-500 bg-emerald-950/20 shadow-md shadow-emerald-950/50'
+                    : 'border-slate-800 bg-slate-950/40 hover:border-slate-700'
+                    }`}
+                >
+                  <div className="text-lg mb-1">🎬</div>
+                  <div className="font-semibold text-sm text-slate-100">Screenplay</div>
+                  <div className="text-xs text-slate-400 mt-1">Standard scene sluglines, character cues, dialogue parents.</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setProjectFormat('audio_drama')}
+                  className={`p-4 rounded-xl border text-left transition-all ${projectFormat === 'audio_drama'
+                    ? 'border-emerald-500 bg-emerald-950/20 shadow-md shadow-emerald-950/50'
+                    : 'border-slate-800 bg-slate-950/40 hover:border-slate-700'
+                    }`}
+                >
+                  <div className="text-lg mb-1">🎙️</div>
+                  <div className="font-semibold text-sm text-slate-100">Audio Drama</div>
+                  <div className="text-xs text-slate-400 mt-1">Episodic layout formatted with SFX, ambient sound, and voice cues.</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setProjectFormat('novel')}
+                  className={`p-4 rounded-xl border text-left transition-all ${projectFormat === 'novel'
+                    ? 'border-emerald-500 bg-emerald-950/20 shadow-md shadow-emerald-950/50'
+                    : 'border-slate-800 bg-slate-950/40 hover:border-slate-700'
+                    }`}
+                >
+                  <div className="text-lg mb-1">📖</div>
+                  <div className="font-semibold text-sm text-slate-100">Prose / Novel</div>
+                  <div className="text-xs text-slate-400 mt-1">Rich narrative descriptions, indented prose, and chapter breaks.</div>
+                </button>
+              </div>
+
+              <div className="flex justify-between items-center pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setOnboardingStage('QUESTIONS')}
+                  className="text-xs text-slate-400 hover:text-slate-200"
+                >
+                  ← Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLaunchWorkspace}
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold transition-colors text-sm shadow-lg shadow-emerald-900/40"
+                >
+                  Launch Workspace →
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     )
   }
-
+  const insertFormattingTag = (prefix: string, defaultText: string) => {
+    setStoryCanvas((prev) => (prev || '') + `\n\n${prefix}${defaultText}`)
+  }
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans">
       {/* Left Sidebar */}
@@ -879,22 +1062,110 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
         {/* Active Canvas Editor */}
         <div className="p-5 bg-slate-900 border border-slate-800 rounded-xl shadow-lg mb-8">
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Active Scene Canvas
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-slate-100">
+                Active Scene Canvas
+              </h2>
+              <span className="text-xs px-2.5 py-0.5 rounded-full border border-slate-700 bg-slate-800 text-slate-300 font-medium">
+                {projectFormat === 'screenplay' && '🎬 Screenplay Mode'}
+                {projectFormat === 'audio_drama' && '🎙️ Audio Drama Mode'}
+                {projectFormat === 'novel' && '📖 Prose / Novel Mode'}
+              </span>
+            </div>
             <button
               onClick={handleAutoContinue}
               disabled={isGenerating}
-              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white rounded-lg text-sm transition-colors"
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-md shadow-emerald-950/40"
             >
-              {isGenerating ? 'Drafting...' : '✨ Auto-Continue Scene'}
+              <span>{isGenerating ? 'Drafting...' : '✨ Auto-Continue Scene'}</span>
             </button>
           </div>
 
+          {/* FORMAT-SPECIFIC TOOLBAR */}
+          <div className="flex items-center gap-1.5 mb-3 p-1.5 bg-slate-900 border border-slate-800 rounded-lg overflow-x-auto text-xs">
+            {projectFormat === 'screenplay' && (
+              <>
+                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">Format:</span>
+                <button
+                  type="button"
+                  onClick={() => insertFormattingTag('INT. ', 'LOCATION - DAY')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-mono font-bold"
+                >
+                  + INT.
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertFormattingTag('EXT. ', 'LOCATION - NIGHT')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-mono font-bold"
+                >
+                  + EXT.
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertFormattingTag('\nCHARACTER NAME\n', 'Dialogue line goes here...')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded font-mono font-bold"
+                >
+                  + Character Cue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertFormattingTag('(', 'whispering)')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded font-mono"
+                >
+                  + (Parenthetical)
+                </button>
+              </>
+            )}
+
+            {projectFormat === 'audio_drama' && (
+              <>
+                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">Audio Cues:</span>
+                <button
+                  type="button"
+                  onClick={() => insertFormattingTag('[SFX: ', 'Thunder rumble in distance]')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded font-mono font-bold"
+                >
+                  + [SFX]
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertFormattingTag('[MUSIC: ', 'Low tense synth pad builds]')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded font-mono font-bold"
+                >
+                  + [MUSIC]
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertFormattingTag('NARRATOR (V.O.)\n', 'The rain showed no signs of stopping...')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded font-mono"
+                >
+                  + Voiceover Cue
+                </button>
+              </>
+            )}
+
+            {projectFormat === 'novel' && (
+              <>
+                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">Prose Tools:</span>
+                <button
+                  type="button"
+                  onClick={() => insertFormattingTag('\n***\n\n', '')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-mono font-bold"
+                >
+                  + Scene Break (***)
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* CANVAS TEXTAREA */}
           <textarea
             value={storyCanvas}
             onChange={(e) => setStoryCanvas(e.target.value)}
-            className="w-full h-80 p-4 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 resize-none font-mono"
+            className={`w-full h-80 p-4 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-500/50 resize-y leading-relaxed ${projectFormat === 'screenplay'
+                ? 'font-mono text-sm tracking-wide'
+                : 'font-sans text-base'
+              }`}
             placeholder="Write your scene here..."
           />
         </div>
