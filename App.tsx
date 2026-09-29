@@ -95,6 +95,20 @@ export default function App() {
     chapters.flatMap((ch) => ch.scenes).find((sc) => sc.id === activeSceneId) ||
     chapters[0]?.scenes[0];
 
+  // Safely retrieves blocks for the active scene, with fallbacks for legacy/empty scenes
+  const getActiveBlocks = (): ScriptBlock[] => {
+    if (activeScene?.blocks && activeScene.blocks.length > 0) {
+      return activeScene.blocks;
+    }
+    if (activeScene?.content) {
+      return [
+        { id: '1', type: 'SCENE_HEADING', text: activeScene.title.toUpperCase() },
+        { id: '2', type: 'ACTION', text: activeScene.content },
+      ];
+    }
+    return [{ id: '1', type: 'SCENE_HEADING', text: 'INT. NEW SCENE - DAY' }];
+  };
+
   // Handler to update blocks for the selected scene
   const handleUpdateActiveBlocks = (updatedBlocks: ScriptBlock[]) => {
     setChapters((prevChapters) =>
@@ -105,6 +119,17 @@ export default function App() {
         ),
       }))
     );
+  };
+
+  // Append a new block directly to the active scene
+  const addBlockToActiveScene = (type: any, defaultText: string = '') => {
+    const currentBlocks = getActiveBlocks();
+    const newBlock: ScriptBlock = {
+      id: Date.now().toString(),
+      type,
+      text: defaultText,
+    };
+    handleUpdateActiveBlocks([...currentBlocks, newBlock]);
   };
   const [isScratchpadOpen, setIsScratchpadOpen] = useState<boolean>(false)
   const [isBibleOpen, setIsBibleOpen] = useState<boolean>(false)
@@ -1125,41 +1150,29 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
                 </span>
                 <button
                   type="button"
-                  onClick={() => {
-                    const newBlock: ScriptBlock = { id: Date.now().toString(), type: 'SCENE_HEADING', text: 'INT. ' };
-                    setScriptBlocks((prev) => [...prev, newBlock]);
-                  }}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition"
+                  onClick={() => addBlockToActiveScene('SCENE_HEADING', 'INT. ')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition cursor-pointer"
                 >
                   + INT.
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    const newBlock: ScriptBlock = { id: Date.now().toString(), type: 'SCENE_HEADING', text: 'EXT. ' };
-                    setScriptBlocks((prev) => [...prev, newBlock]);
-                  }}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition"
+                  onClick={() => addBlockToActiveScene('SCENE_HEADING', 'EXT. ')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition cursor-pointer"
                 >
                   + EXT.
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    const newBlock: ScriptBlock = { id: Date.now().toString(), type: 'CHARACTER', text: '' };
-                    setScriptBlocks((prev) => [...prev, newBlock]);
-                  }}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-medium rounded text-xs transition"
+                  onClick={() => addBlockToActiveScene('CHARACTER', '')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-medium rounded text-xs transition cursor-pointer"
                 >
                   + Character Cue
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    const newBlock: ScriptBlock = { id: Date.now().toString(), type: 'PARENTHETICAL', text: '(' };
-                    setScriptBlocks((prev) => [...prev, newBlock]);
-                  }}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded text-xs transition"
+                  onClick={() => addBlockToActiveScene('PARENTHETICAL', '(')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded text-xs transition cursor-pointer"
                 >
                   + (Parenthetical)
                 </button>
@@ -1204,9 +1217,8 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
             )}
           </div>
 
-          {/* Screenplay Editor Canvas */}
           <ScreenplayEditor
-            blocks={activeScene?.blocks || []}
+            blocks={getActiveBlocks()}
             onChange={handleUpdateActiveBlocks}
           />
         </div>
