@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react'
 // @ts-ignore
 import './styles.css'
+import { PremiseInput } from './PremiseInput';
+import { ScreenplayEditor, ScriptBlock } from './ScreenplayEditor';
 
-export interface Scene {
-  id: string
-  title: string
-  content: string
+interface Scene {
+  id: string;
+  title: string;
+  blocks?: ScriptBlock[];
+  content?: string;
 }
 
 export interface Chapter {
@@ -28,6 +31,20 @@ export default function App() {
   const [onboardingStage, setOnboardingStage] = useState<'PITCH' | 'QUESTIONS' | 'FORMAT_SELECT'>('PITCH')
   const [projectFormat, setProjectFormat] = useState<'screenplay' | 'audio_drama' | 'novel'>('screenplay')
 
+  // Script blocks state with automatic localStorage persistence
+  const [scriptBlocks, setScriptBlocks] = useState<ScriptBlock[]>(() => {
+    const saved = localStorage.getItem('aurastory_active_script');
+    return saved ? JSON.parse(saved) : [
+      { id: '1', type: 'SCENE_HEADING', text: 'INT. POLICE STATION - NIGHT' },
+      { id: '2', type: 'ACTION', text: 'Rain lashes against the grime-streaked window.' },
+    ];
+  });
+
+  // Auto-save whenever script blocks change
+  useEffect(() => {
+    localStorage.setItem('aurastory_active_script', JSON.stringify(scriptBlocks));
+  }, [scriptBlocks]);
+
   // Discovery Answers State
   const [discoveryAnswers, setDiscoveryAnswers] = useState({
     protagonist: '',
@@ -37,7 +54,7 @@ export default function App() {
   })
   // 1. Chapters & Scenes State
   const [chapters, setChapters] = useState<Chapter[]>(() => {
-    const saved = localStorage.getItem('aurastory_chapters')
+    const saved = localStorage.getItem('aurastory_chapters');
     return saved
       ? JSON.parse(saved)
       : [
@@ -48,25 +65,52 @@ export default function App() {
             {
               id: 'sc-1',
               title: 'Scene 1: Rooftop Chase',
-              content:
-                'The neon lights flickered across the wet pavement as the signal dropped. Elena Vance clutched the drive tightly.',
+              blocks: [
+                { id: '1', type: 'SCENE_HEADING', text: 'EXT. ROOFTOP - NIGHT' },
+                { id: '2', type: 'ACTION', text: 'The neon lights flickered across the wet pavement as the signal dropped.' },
+              ],
             },
             {
               id: 'sc-2',
               title: 'Scene 2: Encrypted Alleyway',
-              content:
-                'Rain heavy-poured into the alleyway. Jack stepped out from the shadows, holding a cipher medallion.',
+              blocks: [
+                { id: '1', type: 'SCENE_HEADING', text: 'EXT. ALLEYWAY - NIGHT' },
+                { id: '2', type: 'ACTION', text: 'Rain heavy-poured into the alleyway. Jack stepped out from the shadows.' },
+              ],
             },
           ],
         },
-      ]
-  })
+      ];
+  });
+  // Active Scene ID state
+  const [activeSceneId, setActiveSceneId] = useState<string>('sc-1');
+
+  // Automatically save chapters whenever edited
+  useEffect(() => {
+    localStorage.setItem('aurastory_chapters', JSON.stringify(chapters));
+  }, [chapters]);
+
+  // Get the active scene object
+  const activeScene =
+    chapters.flatMap((ch) => ch.scenes).find((sc) => sc.id === activeSceneId) ||
+    chapters[0]?.scenes[0];
+
+  // Handler to update blocks for the selected scene
+  const handleUpdateActiveBlocks = (updatedBlocks: ScriptBlock[]) => {
+    setChapters((prevChapters) =>
+      prevChapters.map((chapter) => ({
+        ...chapter,
+        scenes: chapter.scenes.map((scene) =>
+          scene.id === activeSceneId ? { ...scene, blocks: updatedBlocks } : scene
+        ),
+      }))
+    );
+  };
   const [isScratchpadOpen, setIsScratchpadOpen] = useState<boolean>(false)
   const [isBibleOpen, setIsBibleOpen] = useState<boolean>(false)
   const [isWhatIfOpen, setIsWhatIfOpen] = useState<boolean>(false)
   const [whatIfPrompt, setWhatIfPrompt] = useState<string>('')
   const [whatIfOutput, setWhatIfOutput] = useState<string>('')
-  const [activeSceneId, setActiveSceneId] = useState<string>('sc-1')
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true)
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false)
   const [newEntryName, setNewEntryName] = useState<string>('')
@@ -376,7 +420,7 @@ DIRECTIVE:
       const found = ch.scenes.find((sc) => sc.id === sceneId)
       if (found) {
         setActiveSceneId(sceneId)
-        setStoryCanvas(found.content)
+        setStoryCanvas(found.content || '')
         break
       }
     }
@@ -620,25 +664,16 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
 
           {/* STAGE 1: INITIAL PITCH */}
           {onboardingStage === 'PITCH' && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl text-left space-y-4">
-              <label className="block text-sm font-medium text-slate-300">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl text-slate-100">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
                 What story are we bringing to life today?
               </label>
-              <textarea
-                value={onboardingConcept}
-                onChange={(e) => setOnboardingConcept(e.target.value)}
-                className="w-full bg-slate-950/60 border border-slate-800 rounded-lg p-3 text-slate-200 resize-none focus:outline-none focus:border-emerald-500/50 placeholder-slate-500 min-h-[120px]"
-                placeholder="Describe your project concept, main idea, tone, or opening hook..."
+              <PremiseInput
+                onLoginSuccess={(savedPrompt: string) => {
+                  setOnboardingConcept(savedPrompt);
+                  setOnboardingStage('QUESTIONS');
+                }}
               />
-              <div className="flex justify-end pt-2">
-                <button
-                  onClick={() => setOnboardingStage('QUESTIONS')}
-                  disabled={!onboardingConcept.trim()}
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-emerald-900/30"
-                >
-                  Continue to Questions →
-                </button>
-              </div>
             </div>
           )}
 
@@ -1082,35 +1117,49 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
           </div>
 
           {/* FORMAT-SPECIFIC TOOLBAR */}
-          <div className="flex items-center gap-1.5 mb-3 p-1.5 bg-slate-900 border border-slate-800 rounded-lg overflow-x-auto text-xs">
+          <div className="flex items-center gap-1.5 mb-3 p-1.5 bg-slate-900 border border-slate-800 rounded-lg">
             {projectFormat === 'screenplay' && (
               <>
-                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">Format:</span>
+                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
+                  FORMAT:
+                </span>
                 <button
                   type="button"
-                  onClick={() => insertFormattingTag('INT. ', 'LOCATION - DAY')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-mono font-bold"
+                  onClick={() => {
+                    const newBlock: ScriptBlock = { id: Date.now().toString(), type: 'SCENE_HEADING', text: 'INT. ' };
+                    setScriptBlocks((prev) => [...prev, newBlock]);
+                  }}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition"
                 >
                   + INT.
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertFormattingTag('EXT. ', 'LOCATION - NIGHT')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-mono font-bold"
+                  onClick={() => {
+                    const newBlock: ScriptBlock = { id: Date.now().toString(), type: 'SCENE_HEADING', text: 'EXT. ' };
+                    setScriptBlocks((prev) => [...prev, newBlock]);
+                  }}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition"
                 >
                   + EXT.
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertFormattingTag('\nCHARACTER NAME\n', 'Dialogue line goes here...')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded font-mono font-bold"
+                  onClick={() => {
+                    const newBlock: ScriptBlock = { id: Date.now().toString(), type: 'CHARACTER', text: '' };
+                    setScriptBlocks((prev) => [...prev, newBlock]);
+                  }}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-medium rounded text-xs transition"
                 >
                   + Character Cue
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertFormattingTag('(', 'whispering)')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded font-mono"
+                  onClick={() => {
+                    const newBlock: ScriptBlock = { id: Date.now().toString(), type: 'PARENTHETICAL', text: '(' };
+                    setScriptBlocks((prev) => [...prev, newBlock]);
+                  }}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded text-xs transition"
                 >
                   + (Parenthetical)
                 </button>
@@ -1119,38 +1168,35 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
 
             {projectFormat === 'audio_drama' && (
               <>
-                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">Audio Cues:</span>
+                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
+                  Audio Cues
+                </span>
                 <button
                   type="button"
                   onClick={() => insertFormattingTag('[SFX: ', 'Thunder rumble in distance]')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded font-mono font-bold"
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded font-mono text-xs"
                 >
                   + [SFX]
                 </button>
                 <button
                   type="button"
                   onClick={() => insertFormattingTag('[MUSIC: ', 'Low tense synth pad builds]')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded font-mono font-bold"
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded font-mono text-xs"
                 >
                   + [MUSIC]
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertFormattingTag('NARRATOR (V.O.)\n', 'The rain showed no signs of stopping...')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded font-mono"
-                >
-                  + Voiceover Cue
                 </button>
               </>
             )}
 
             {projectFormat === 'novel' && (
               <>
-                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">Prose Tools:</span>
+                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
+                  Prose
+                </span>
                 <button
                   type="button"
-                  onClick={() => insertFormattingTag('\n***\n\n', '')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-mono font-bold"
+                  onClick={() => insertFormattingTag('\n***\n', '')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs"
                 >
                   + Scene Break (***)
                 </button>
@@ -1158,18 +1204,13 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
             )}
           </div>
 
-          {/* CANVAS TEXTAREA */}
-          <textarea
-            value={storyCanvas}
-            onChange={(e) => setStoryCanvas(e.target.value)}
-            className={`w-full h-80 p-4 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-500/50 resize-y leading-relaxed ${projectFormat === 'screenplay'
-                ? 'font-mono text-sm tracking-wide'
-                : 'font-sans text-base'
-              }`}
-            placeholder="Write your scene here..."
+          {/* Screenplay Editor Canvas */}
+          <ScreenplayEditor
+            blocks={activeScene?.blocks || []}
+            onChange={handleUpdateActiveBlocks}
           />
         </div>
-      </main>
-    </div>
+      </main >
+    </div >
   )
 }
