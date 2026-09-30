@@ -132,35 +132,55 @@ export default function App() {
     handleUpdateActiveBlocks([...currentBlocks, newBlock]);
   };
   // Handler to auto-continue the active scene with AI
+  // Handler to auto-continue the active scene with dynamic sequential beats
   const handleAutoContinueScene = async () => {
     if (isGenerating) return;
     setIsGenerating(true);
 
     try {
       const currentBlocks = getActiveBlocks();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Temporary client-side mock generator for instant testing
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-
-      const mockGeneratedBlocks: ScriptBlock[] = [
-        {
-          id: `${Date.now()}_1`,
-          type: 'ACTION',
-          text: 'A shadow moves quickly across the far wall. The hum of the flickering fluorescent light grows louder.',
-        },
-        {
-          id: `${Date.now()}_2`,
-          type: 'CHARACTER',
-          text: 'HERO',
-        },
-        {
-          id: `${Date.now()}_3`,
-          type: 'DIALOGUE',
-          text: "Did you hear that? We aren't alone here.",
-        },
+      // Array of distinct screenplay beats to progress the scene dynamically
+      const beatVariations = [
+        [
+          {
+            type: 'ACTION',
+            text: 'A heavy metal door slams shut down the corridor. Footsteps echo against the concrete floor.',
+          },
+          { type: 'CHARACTER', text: 'VILLAIN' },
+          { type: 'DIALOGUE', text: 'You were foolish to follow me here.' },
+        ],
+        [
+          { type: 'CHARACTER', text: 'HERO' },
+          { type: 'PARENTHETICAL', text: '(lowers voice)' },
+          { type: 'DIALOGUE', text: 'I brought backup.' },
+          {
+            type: 'ACTION',
+            text: ' Red alarm lights suddenly flood the room, bathing everything in intense Crimson.',
+          },
+        ],
+        [
+          {
+            type: 'ACTION',
+            text: 'The glass panel shatters into thousands of pieces as a flashbang detonates.',
+          },
+          { type: 'CHARACTER', text: 'HERO' },
+          { type: 'DIALOGUE', text: 'Move, move, move!' },
+        ],
       ];
 
-      handleUpdateActiveBlocks([...currentBlocks, ...mockGeneratedBlocks]);
+      // Select the next beat based on how many blocks currently exist
+      const beatIndex = Math.floor(currentBlocks.length / 3) % beatVariations.length;
+      const selectedBeat = beatVariations[beatIndex];
+
+      const newBlocks: ScriptBlock[] = selectedBeat.map((item, idx) => ({
+        id: `${Date.now()}_${idx}`,
+        type: item.type as any,
+        text: item.text,
+      }));
+
+      handleUpdateActiveBlocks([...currentBlocks, ...newBlocks]);
     } catch (error) {
       console.error('Error auto-continuing scene:', error);
     } finally {
@@ -1204,89 +1224,89 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
                 </>
               )}
             </button>
-            </div>
-
-            {/* FORMAT-SPECIFIC TOOLBAR */}
-            <div className="flex items-center gap-1.5 mb-3 p-1.5 bg-slate-900 border border-slate-800 rounded-lg">
-              {projectFormat === 'screenplay' && (
-                <>
-                  <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
-                    FORMAT:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => addBlockToActiveScene('SCENE_HEADING', 'INT. ')}
-                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition cursor-pointer"
-                  >
-                    + INT.
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => addBlockToActiveScene('SCENE_HEADING', 'EXT. ')}
-                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition cursor-pointer"
-                  >
-                    + EXT.
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => addBlockToActiveScene('CHARACTER', '')}
-                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-medium rounded text-xs transition cursor-pointer"
-                  >
-                    + Character Cue
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => addBlockToActiveScene('PARENTHETICAL', '(')}
-                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded text-xs transition cursor-pointer"
-                  >
-                    + (Parenthetical)
-                  </button>
-                </>
-              )}
-
-              {projectFormat === 'audio_drama' && (
-                <>
-                  <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
-                    Audio Cues
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => insertFormattingTag('[SFX: ', 'Thunder rumble in distance]')}
-                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded font-mono text-xs"
-                  >
-                    + [SFX]
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertFormattingTag('[MUSIC: ', 'Low tense synth pad builds]')}
-                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded font-mono text-xs"
-                  >
-                    + [MUSIC]
-                  </button>
-                </>
-              )}
-
-              {projectFormat === 'novel' && (
-                <>
-                  <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
-                    Prose
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => insertFormattingTag('\n***\n', '')}
-                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs"
-                  >
-                    + Scene Break (***)
-                  </button>
-                </>
-              )}
-            </div>
-
-            <ScreenplayEditor
-              blocks={getActiveBlocks()}
-              onChange={handleUpdateActiveBlocks}
-            />
           </div>
+
+          {/* FORMAT-SPECIFIC TOOLBAR */}
+          <div className="flex items-center gap-1.5 mb-3 p-1.5 bg-slate-900 border border-slate-800 rounded-lg">
+            {projectFormat === 'screenplay' && (
+              <>
+                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
+                  FORMAT:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => addBlockToActiveScene('SCENE_HEADING', 'INT. ')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition cursor-pointer"
+                >
+                  + INT.
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addBlockToActiveScene('SCENE_HEADING', 'EXT. ')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition cursor-pointer"
+                >
+                  + EXT.
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addBlockToActiveScene('CHARACTER', '')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-medium rounded text-xs transition cursor-pointer"
+                >
+                  + Character Cue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addBlockToActiveScene('PARENTHETICAL', '(')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded text-xs transition cursor-pointer"
+                >
+                  + (Parenthetical)
+                </button>
+              </>
+            )}
+
+            {projectFormat === 'audio_drama' && (
+              <>
+                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
+                  Audio Cues
+                </span>
+                <button
+                  type="button"
+                  onClick={() => insertFormattingTag('[SFX: ', 'Thunder rumble in distance]')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded font-mono text-xs"
+                >
+                  + [SFX]
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertFormattingTag('[MUSIC: ', 'Low tense synth pad builds]')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded font-mono text-xs"
+                >
+                  + [MUSIC]
+                </button>
+              </>
+            )}
+
+            {projectFormat === 'novel' && (
+              <>
+                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
+                  Prose
+                </span>
+                <button
+                  type="button"
+                  onClick={() => insertFormattingTag('\n***\n', '')}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs"
+                >
+                  + Scene Break (***)
+                </button>
+              </>
+            )}
+          </div>
+
+          <ScreenplayEditor
+            blocks={getActiveBlocks()}
+            onChange={handleUpdateActiveBlocks}
+          />
+        </div>
       </main >
     </div >
   )
