@@ -509,36 +509,52 @@ DIRECTIVE:
 
   // Create New Chapter
   const handleAddChapter = () => {
-    if (!newChapterTitle.trim()) return
-    const newCh: Chapter = {
-      id: `ch-${Date.now()}`,
-      title: newChapterTitle.trim(),
-      scenes: []
-    }
-    setChapters((prev) => [...prev, newCh])
-    setNewChapterTitle('')
-  }
+    const title = newChapterTitle.trim() || `Chapter ${chapters.length + 1}`;
+    const newChapterId = `ch-${Date.now()}`;
+    const newSceneId = `sc-${Date.now()}`;
+
+    const newChapter: Chapter = {
+      id: newChapterId,
+      title: title,
+      scenes: [
+        {
+          id: newSceneId,
+          title: 'Scene 1: Introduction',
+          blocks: [
+            { id: '1', type: 'SCENE_HEADING', text: 'INT. NEW LOCATION - DAY' }
+          ]
+        }
+      ]
+    };
+
+    setChapters((prev) => [...prev, newChapter]);
+    setActiveSceneId(newSceneId);
+    setNewChapterTitle('');
+  };
 
   // Create New Scene inside a Chapter
   const handleAddScene = (chapterId: string) => {
-    const newScId = `sc-${Date.now()}`
+    const newScId = `sc-${Date.now()}`;
+
     setChapters((prev) =>
       prev.map((ch) => {
         if (ch.id === chapterId) {
-          const sceneNum = ch.scenes.length + 1
+          const sceneNum = ch.scenes.length + 1;
           const newScene: Scene = {
             id: newScId,
             title: `Scene ${sceneNum}: New Scene`,
-            content: ''
-          }
-          return { ...ch, scenes: [...ch.scenes, newScene] }
+            blocks: [
+              { id: '1', type: 'SCENE_HEADING', text: 'INT. NEW LOCATION - DAY' }
+            ]
+          };
+          return { ...ch, scenes: [...ch.scenes, newScene] };
         }
-        return ch
+        return ch;
       })
-    )
-    setActiveSceneId(newScId)
-    setStoryCanvas('')
-  }
+    );
+
+    setActiveSceneId(newScId);
+  };
 
   // Delete Scene
   const handleDeleteScene = (chapterId: string, sceneId: string, e: React.MouseEvent) => {
