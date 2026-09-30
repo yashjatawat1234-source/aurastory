@@ -131,6 +131,42 @@ export default function App() {
     };
     handleUpdateActiveBlocks([...currentBlocks, newBlock]);
   };
+  // Handler to auto-continue the active scene with AI
+  const handleAutoContinueScene = async () => {
+    if (isGenerating) return;
+    setIsGenerating(true);
+
+    try {
+      const currentBlocks = getActiveBlocks();
+
+      // Temporary client-side mock generator for instant testing
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+
+      const mockGeneratedBlocks: ScriptBlock[] = [
+        {
+          id: `${Date.now()}_1`,
+          type: 'ACTION',
+          text: 'A shadow moves quickly across the far wall. The hum of the flickering fluorescent light grows louder.',
+        },
+        {
+          id: `${Date.now()}_2`,
+          type: 'CHARACTER',
+          text: 'HERO',
+        },
+        {
+          id: `${Date.now()}_3`,
+          type: 'DIALOGUE',
+          text: "Did you hear that? We aren't alone here.",
+        },
+      ];
+
+      handleUpdateActiveBlocks([...currentBlocks, ...mockGeneratedBlocks]);
+    } catch (error) {
+      console.error('Error auto-continuing scene:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
   const [isScratchpadOpen, setIsScratchpadOpen] = useState<boolean>(false)
   const [isBibleOpen, setIsBibleOpen] = useState<boolean>(false)
   const [isWhatIfOpen, setIsWhatIfOpen] = useState<boolean>(false)
@@ -1133,95 +1169,124 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
               </span>
             </div>
             <button
-              onClick={handleAutoContinue}
+              type="button"
+              onClick={handleAutoContinueScene}
               disabled={isGenerating}
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-md shadow-emerald-950/40"
+              className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 text-xs font-semibold rounded-lg transition shadow-md cursor-pointer disabled:cursor-not-allowed"
             >
-              <span>{isGenerating ? 'Drafting...' : '✨ Auto-Continue Scene'}</span>
+              {isGenerating ? (
+                <>
+                  <svg
+                    className="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-slate-950"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  <span>Generating Beats...</span>
+                </>
+              ) : (
+                <>
+                  <span>✨ Auto-Continue Scene</span>
+                </>
+              )}
             </button>
+            </div>
+
+            {/* FORMAT-SPECIFIC TOOLBAR */}
+            <div className="flex items-center gap-1.5 mb-3 p-1.5 bg-slate-900 border border-slate-800 rounded-lg">
+              {projectFormat === 'screenplay' && (
+                <>
+                  <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
+                    FORMAT:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => addBlockToActiveScene('SCENE_HEADING', 'INT. ')}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition cursor-pointer"
+                  >
+                    + INT.
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => addBlockToActiveScene('SCENE_HEADING', 'EXT. ')}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition cursor-pointer"
+                  >
+                    + EXT.
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => addBlockToActiveScene('CHARACTER', '')}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-medium rounded text-xs transition cursor-pointer"
+                  >
+                    + Character Cue
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => addBlockToActiveScene('PARENTHETICAL', '(')}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded text-xs transition cursor-pointer"
+                  >
+                    + (Parenthetical)
+                  </button>
+                </>
+              )}
+
+              {projectFormat === 'audio_drama' && (
+                <>
+                  <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
+                    Audio Cues
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => insertFormattingTag('[SFX: ', 'Thunder rumble in distance]')}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded font-mono text-xs"
+                  >
+                    + [SFX]
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormattingTag('[MUSIC: ', 'Low tense synth pad builds]')}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded font-mono text-xs"
+                  >
+                    + [MUSIC]
+                  </button>
+                </>
+              )}
+
+              {projectFormat === 'novel' && (
+                <>
+                  <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
+                    Prose
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => insertFormattingTag('\n***\n', '')}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs"
+                  >
+                    + Scene Break (***)
+                  </button>
+                </>
+              )}
+            </div>
+
+            <ScreenplayEditor
+              blocks={getActiveBlocks()}
+              onChange={handleUpdateActiveBlocks}
+            />
           </div>
-
-          {/* FORMAT-SPECIFIC TOOLBAR */}
-          <div className="flex items-center gap-1.5 mb-3 p-1.5 bg-slate-900 border border-slate-800 rounded-lg">
-            {projectFormat === 'screenplay' && (
-              <>
-                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
-                  FORMAT:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => addBlockToActiveScene('SCENE_HEADING', 'INT. ')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition cursor-pointer"
-                >
-                  + INT.
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addBlockToActiveScene('SCENE_HEADING', 'EXT. ')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition cursor-pointer"
-                >
-                  + EXT.
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addBlockToActiveScene('CHARACTER', '')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-medium rounded text-xs transition cursor-pointer"
-                >
-                  + Character Cue
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addBlockToActiveScene('PARENTHETICAL', '(')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded text-xs transition cursor-pointer"
-                >
-                  + (Parenthetical)
-                </button>
-              </>
-            )}
-
-            {projectFormat === 'audio_drama' && (
-              <>
-                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
-                  Audio Cues
-                </span>
-                <button
-                  type="button"
-                  onClick={() => insertFormattingTag('[SFX: ', 'Thunder rumble in distance]')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded font-mono text-xs"
-                >
-                  + [SFX]
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertFormattingTag('[MUSIC: ', 'Low tense synth pad builds]')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded font-mono text-xs"
-                >
-                  + [MUSIC]
-                </button>
-              </>
-            )}
-
-            {projectFormat === 'novel' && (
-              <>
-                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
-                  Prose
-                </span>
-                <button
-                  type="button"
-                  onClick={() => insertFormattingTag('\n***\n', '')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs"
-                >
-                  + Scene Break (***)
-                </button>
-              </>
-            )}
-          </div>
-
-          <ScreenplayEditor
-            blocks={getActiveBlocks()}
-            onChange={handleUpdateActiveBlocks}
-          />
-        </div>
       </main >
     </div >
   )
