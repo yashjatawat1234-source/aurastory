@@ -133,56 +133,77 @@ export default function App() {
   };
   // Handler to auto-continue the active scene with AI
   // Handler to auto-continue the active scene with dynamic sequential beats
+  // Handler to auto-continue the active scene with real Gemini AI
   const handleAutoContinueScene = async () => {
     if (isGenerating) return;
     setIsGenerating(true);
 
     try {
       const currentBlocks = getActiveBlocks();
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
 
-      // Array of distinct screenplay beats to progress the scene dynamically
-      const beatVariations = [
-        [
-          {
-            type: 'ACTION',
-            text: 'A heavy metal door slams shut down the corridor. Footsteps echo against the concrete floor.',
-          },
-          { type: 'CHARACTER', text: 'VILLAIN' },
-          { type: 'DIALOGUE', text: 'You were foolish to follow me here.' },
-        ],
-        [
-          { type: 'CHARACTER', text: 'HERO' },
-          { type: 'PARENTHETICAL', text: '(lowers voice)' },
-          { type: 'DIALOGUE', text: 'I brought backup.' },
-          {
-            type: 'ACTION',
-            text: ' Red alarm lights suddenly flood the room, bathing everything in intense Crimson.',
-          },
-        ],
-        [
-          {
-            type: 'ACTION',
-            text: 'The glass panel shatters into thousands of pieces as a flashbang detonates.',
-          },
-          { type: 'CHARACTER', text: 'HERO' },
-          { type: 'DIALOGUE', text: 'Move, move, move!' },
-        ],
-      ];
+      if (!apiKey) {
+        alert('Please set VITE_GEMINI_API_KEY in your environment variables.');
+        setIsGenerating(false);
+        return;
+      }
 
-      // Select the next beat based on how many blocks currently exist
-      const beatIndex = Math.floor(currentBlocks.length / 3) % beatVariations.length;
-      const selectedBeat = beatVariations[beatIndex];
+      // 1. Gather context from recent screenplay blocks
+      const recentContext = currentBlocks
+        .slice(-8)
+        .map((b) => `${b.type}: ${b.text}`)
+        .join('\n');
 
-      const newBlocks: ScriptBlock[] = selectedBeat.map((item, idx) => ({
-        id: `${Date.now()}_${idx}`,
-        type: item.type as any,
-        text: item.text,
-      }));
+      const prompt = `You are an expert screenplay writer co-authoring a scene.
+Continue the scene naturally by generating 3 to 4 logical, engaging screenplay blocks based on recent context.
 
-      handleUpdateActiveBlocks([...currentBlocks, ...newBlocks]);
+Scene Title: ${activeScene?.title || 'Current Scene'}
+Recent Context:
+${recentContext}
+
+OUTPUT INSTRUCTIONS:
+Return ONLY a valid JSON array of objects without markdown formatting, backticks, or intro/outro prose.
+JSON Schema:
+[
+  { "type": "ACTION" | "CHARACTER" | "DIALOGUE" | "PARENTHETICAL", "text": "string" }
+]`;
+
+      // 2. Call Gemini API endpoint
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.7,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const rawJsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (rawJsonText) {
+        const parsedBlocks = JSON.parse(rawJsonText);
+        const newBlocks: ScriptBlock[] = parsedBlocks.map((item: any, idx: number) => ({
+          id: `${Date.now()}_${idx}`,
+          type: item.type || 'ACTION',
+          text: item.text || '',
+        }));
+
+        handleUpdateActiveBlocks([...currentBlocks, ...newBlocks]);
+      }
     } catch (error) {
-      console.error('Error auto-continuing scene:', error);
+      console.error('Error auto-continuing scene with AI:', error);
+      alert('AI generation failed. Please check console or API key.');
     } finally {
       setIsGenerating(false);
     }
