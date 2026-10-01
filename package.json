@@ -12,7 +12,7 @@
     "format": "prettier --write ."
   },
   "overrides": {
-    "@tanstack/start-server-core": "$@tanstack/start"
+    "@tanstack/start-server-core": "1.169.18"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
