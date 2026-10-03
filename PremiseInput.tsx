@@ -1,143 +1,50 @@
 import React, { useState } from 'react';
 
 interface PremiseInputProps {
-  onLoginSuccess?: (promptText: string) => void;
+  onNext?: (premise: string) => void;
+  onLoginSuccess?: (savedPrompt: string) => void;
+  initialValue?: string;
 }
 
-export function PremiseInput({ onLoginSuccess }: PremiseInputProps) {
-  const [prompt, setPrompt] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showEmailForm, setShowEmailForm] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export const PremiseInput: React.FC<PremiseInputProps> = ({
+  onNext,
+  onLoginSuccess,
+  initialValue = ''
+}) => {
+  const [premise, setPremise] = useState(initialValue);
 
-  const triggerSubmit = () => {
-    if (!prompt.trim()) return;
-    sessionStorage.setItem('pending_premise', prompt);
-    setIsModalOpen(true);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      triggerSubmit();
-    }
-  };
-
-  const handleAuth = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-
-    const savedPremise = sessionStorage.getItem('pending_premise') || prompt;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!premise.trim()) return;
 
     if (onLoginSuccess) {
-      onLoginSuccess(savedPremise);
+      onLoginSuccess(premise);
+    } else if (onNext) {
+      onNext(premise);
     }
-
-    sessionStorage.removeItem('pending_premise');
-    setIsModalOpen(false);
-    setShowEmailForm(false);
-    setPrompt('');
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto my-2 relative">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Textarea Input */}
       <textarea
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Describe your project concept, main idea, tone, or opening hook..."
-        rows={3}
-        className="w-full p-4 bg-slate-950/60 text-slate-100 border border-slate-800 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+        value={premise}
+        onChange={(e) => setPremise(e.target.value)}
+        rows={7}
+        placeholder="Describe your project concept, main idea, tone, or hook... (Tip: Share ~500 words about your story, style, and vision so AI can match your voice across all features)"
+        className="w-full bg-[#090d16] text-slate-100 placeholder-slate-500 border border-slate-800 rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-[#10b981] focus:border-transparent resize-none transition-all text-sm leading-relaxed"
       />
 
-      {/* Visible ENTER Button */}
-      <div className="flex justify-end pt-2">
+      {/* Action Row with ENTER button */}
+      <div className="flex justify-end pt-1">
         <button
-          onClick={triggerSubmit}
-          disabled={!prompt.trim()}
-          className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold rounded-lg transition flex items-center gap-2"
+          type="submit"
+          disabled={!premise.trim()}
+          className="bg-[#059669] hover:bg-[#10b981] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold py-2.5 px-6 rounded-lg transition-all tracking-wider flex items-center gap-1.5 uppercase shadow-lg shadow-emerald-950/40"
         >
           ENTER ↵
         </button>
       </div>
-
-      {/* Auth Modal Overlay */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl max-w-md w-full shadow-2xl relative text-slate-100 animate-in fade-in zoom-in-95">
-            <button
-              onClick={() => {
-                setIsModalOpen(false);
-                setShowEmailForm(false);
-              }}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-200 text-xl font-bold"
-            >
-              ✕
-            </button>
-            <h2 className="text-2xl font-bold mb-2 text-white">Save Your Concept</h2>
-            <p className="text-slate-400 mb-6 text-sm">
-              Log in or sign up to generate your screenplay workspace and process your premise.
-            </p>
-
-            {!showEmailForm ? (
-              <div className="space-y-3">
-                <button
-                  onClick={() => handleAuth()}
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition"
-                >
-                  Continue with Google
-                </button>
-                <button
-                  onClick={() => setShowEmailForm(true)}
-                  className="w-full py-3 border border-slate-700 hover:bg-slate-800 text-slate-200 font-medium rounded-xl transition"
-                >
-                  Continue with Email
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleAuth} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Email</label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="writer@studio.com"
-                    className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 outline-none focus:border-indigo-500"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition mt-2"
-                >
-                  Sign In & Continue
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowEmailForm(false)}
-                  className="w-full text-xs text-slate-400 hover:text-slate-200 text-center mt-2"
-                >
-                  ← Back to options
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+    </form>
   );
-}
+};

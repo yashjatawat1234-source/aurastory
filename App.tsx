@@ -793,11 +793,18 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
               {onboardingStage === 'QUESTIONS' && "Step 2 of 3: Deep Narrative Discovery"}
               {onboardingStage === 'FORMAT_SELECT' && "Step 3 of 3: Select Workspace Format"}
             </p>
+
+            {/* Formats paragraph placed directly below header branding */}
+            {onboardingStage === 'PITCH' && (
+              <p className="font-serif italic text-slate-300 text-sm md:text-base leading-relaxed mt-4 px-2">
+                "Choose from our supported writing formats to customize your workspace rules and AI features. AuraStory seamlessly adapts its layout whether you're crafting film, audio, short, or ads."
+              </p>
+            )}
           </div>
 
           {/* STAGE 1: INITIAL PITCH */}
           {onboardingStage === 'PITCH' && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl text-slate-100">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
               <label className="block text-sm font-medium text-slate-300 mb-2">
                 What story are we bringing to life today?
               </label>
