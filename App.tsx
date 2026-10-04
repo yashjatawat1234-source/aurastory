@@ -40,22 +40,22 @@ function AuthModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () 
   };
 
   const handleGoogleSignIn = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setLoading(true);
-    setErrorMsg('');
+  e.stopPropagation();
+  setLoading(true);
+  setErrorMsg('');
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin,
-      },
-    });
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/`,
+    },
+  });
 
-    if (error) {
-      setErrorMsg(error.message);
-      setLoading(false);
-    }
-  };
+  if (error) {
+    setErrorMsg(error.message);
+    setLoading(false);
+  }
+};
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
