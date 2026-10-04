@@ -25,14 +25,164 @@ interface BibleEntry {
   current_state: string
   secrets_and_history: string
 }
+function AuthModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [authStep, setAuthStep] = useState<'CHOICE' | 'EMAIL'>('CHOICE');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
+  const handleClose = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClose();
+  };
+
+  const handleGoogleSignIn = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Google Sign-In logic triggers here
+    onSuccess();
+  };
+
+  const handleEmailSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password.trim()) return;
+    onSuccess();
+  };
+
+  return (
+    <div
+      className="w-full max-w-md relative bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl z-[100000]"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        onClick={handleClose}
+        className="absolute top-4 right-4 text-slate-400 hover:text-white text-sm p-2 rounded-lg transition-colors cursor-pointer z-20"
+      >
+        ✕
+      </button>
+
+      {authStep === 'CHOICE' ? (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-white mb-1">Save Your Work</h2>
+          <p className="text-slate-400 text-sm mb-6">
+            Choose how you'd like to sign in to save your progress and continue.
+          </p>
+
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            className="w-full flex items-center justify-center gap-3 bg-white text-slate-900 font-semibold py-2.5 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+              />
+            </svg>
+            Sign in with Google
+          </button>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-800"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-slate-900 px-2 text-slate-500">Or</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setAuthStep('EMAIL')}
+            className="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-2.5 rounded-lg text-sm transition-colors cursor-pointer border border-slate-700"
+          >
+            Sign in with Email
+          </button>
+        </div>
+      ) : (
+        <div>
+          <button
+            type="button"
+            onClick={() => setAuthStep('CHOICE')}
+            className="text-xs text-teal-400 hover:underline mb-3 block"
+          >
+            ← Back to sign in options
+          </button>
+
+          <h2 className="text-xl font-bold mb-1 text-white">Save Your Work</h2>
+          <p className="text-slate-400 text-sm mb-6">
+            Enter your credentials to save your project concept and continue shaping your story.
+          </p>
+
+          <form onSubmit={handleEmailSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Email Address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold py-2 rounded-lg text-sm transition-colors cursor-pointer"
+            >
+              Continue to Step 2 →
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
 export default function App() {
   const [isWorkspaceActive, setIsWorkspaceActive] = useState<boolean>(false)
   const [onboardingConcept, setOnboardingConcept] = useState<string>('')
   // Onboarding Discovery State
-  const [onboardingStage, setOnboardingStage] = useState<'PITCH' | 'QUESTIONS' | 'FORMAT_SELECT'>('PITCH')
+  const [onboardingStage, setOnboardingStage] = useState<'PREMISE' | 'PITCH' | 'QUESTIONS' | 'FORMAT_SELECT'>('PREMISE');
   const [projectFormat, setProjectFormat] = useState<'screenplay' | 'audio_drama' | 'novel'>('screenplay')
-
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  console.log("CURRENT STATE:", { onboardingStage, showAuthModal });
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // Checks if the clicked element or any parent container is a button
+      const button = target.closest('button');
+      if (button) {
+        console.log('BUTTON CLICKED GLOBALLY:', button);
+        setShowAuthModal(true);
+      }
+    };
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
   // Script blocks state with automatic localStorage persistence
   const [scriptBlocks, setScriptBlocks] = useState<ScriptBlock[]>(() => {
     const saved = localStorage.getItem('aurastory_active_script');
@@ -783,40 +933,42 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6">
         <div className="max-w-2xl w-full text-center space-y-6">
 
-          {/* Header Branding */}
-          <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent">
-              AuraStory Studio
-            </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              {onboardingStage === 'PITCH' && "Step 1 of 3: Core Story Premise"}
-              {onboardingStage === 'QUESTIONS' && "Step 2 of 3: Deep Narrative Discovery"}
-              {onboardingStage === 'FORMAT_SELECT' && "Step 3 of 3: Select Workspace Format"}
-            </p>
-
-            {/* Formats paragraph placed directly below header branding */}
-            {onboardingStage === 'PITCH' && (
-              <p className="font-serif italic text-slate-300 text-sm md:text-base leading-relaxed mt-4 px-2">
+          {/* STAGE 1: INITIAL PITCH & PREMISE */}
+          {(onboardingStage === 'PREMISE' || onboardingStage === 'PITCH') && (
+            <div className="relative z-50 w-full max-w-2xl mx-auto text-center space-y-6 pointer-events-auto">
+              <h1 className="text-4xl font-extrabold text-teal-400">AuraStory Studio</h1>
+              <p className="text-slate-400 text-sm">Step 1 of 3: Core Story Premise</p>
+              <p className="text-slate-300 italic text-sm max-w-xl mx-auto">
                 "Choose from our supported writing formats to customize your workspace rules and AI features. AuraStory seamlessly adapts its layout whether you're crafting film, audio, short, or ads."
               </p>
-            )}
-          </div>
 
-          {/* STAGE 1: INITIAL PITCH */}
-          {onboardingStage === 'PITCH' && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                What story are we bringing to life today?
-              </label>
-              <PremiseInput
-                onLoginSuccess={(savedPrompt: string) => {
-                  setOnboardingConcept(savedPrompt);
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl text-center relative z-50 pointer-events-auto">
+                <label className="block text-sm font-medium text-slate-300 mb-2 text-center">
+                  What story are we bringing to life today?
+                </label>
+                <PremiseInput
+                  onLoginSuccess={(savedPrompt: string) => {
+                    setOnboardingConcept(savedPrompt);
+                    setShowAuthModal(true);
+                  }}
+                  onSubmit={() => {
+                    setShowAuthModal(true);
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          {showAuthModal && (
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/70 backdrop-blur-md pointer-events-auto">
+              <AuthModal
+                onClose={() => setShowAuthModal(false)}
+                onSuccess={() => {
+                  setShowAuthModal(false);
                   setOnboardingStage('QUESTIONS');
                 }}
               />
             </div>
           )}
-
           {/* STAGE 2: DEEP QUESTIONS */}
           {onboardingStage === 'QUESTIONS' && (
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl text-left space-y-4">

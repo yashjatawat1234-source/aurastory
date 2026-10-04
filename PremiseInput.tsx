@@ -1,50 +1,48 @@
 import React, { useState } from 'react';
 
 interface PremiseInputProps {
-  onNext?: (premise: string) => void;
   onLoginSuccess?: (savedPrompt: string) => void;
+  onSubmit?: () => void;
   initialValue?: string;
 }
 
 export const PremiseInput: React.FC<PremiseInputProps> = ({
-  onNext,
   onLoginSuccess,
+  onSubmit,
   initialValue = ''
 }) => {
   const [premise, setPremise] = useState(initialValue);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!premise.trim()) return;
-
+    e.stopPropagation();
     if (onLoginSuccess) {
       onLoginSuccess(premise);
-    } else if (onNext) {
-      onNext(premise);
+    }
+    if (onSubmit) {
+      onSubmit();
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Textarea Input */}
+    <div className="space-y-4">
       <textarea
         value={premise}
         onChange={(e) => setPremise(e.target.value)}
         rows={7}
-        placeholder="Describe your project concept, main idea, tone, or hook... (Tip: Share ~500 words about your story, style, and vision so AI can match your voice across all features)"
-        className="w-full bg-[#090d16] text-slate-100 placeholder-slate-500 border border-slate-800 rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-[#10b981] focus:border-transparent resize-none transition-all text-sm leading-relaxed"
+        placeholder="Describe your project concept, main idea, tone, or hook..."
+        className="w-full bg-slate-950 text-slate-100 placeholder-slate-500 border border-slate-800 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-500 resize-none text-left"
       />
 
-      {/* Action Row with ENTER button */}
       <div className="flex justify-end pt-1">
         <button
-          type="submit"
-          disabled={!premise.trim()}
-          className="bg-[#059669] hover:bg-[#10b981] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold py-2.5 px-6 rounded-lg transition-all tracking-wider flex items-center gap-1.5 uppercase shadow-lg shadow-emerald-950/40"
+          type="button"
+          onClick={handleClick}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2 rounded-lg text-sm flex items-center gap-1 transition-colors cursor-pointer"
         >
           ENTER ↵
         </button>
       </div>
-    </form>
+    </div>
   );
 };
