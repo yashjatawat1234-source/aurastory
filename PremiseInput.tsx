@@ -1,44 +1,39 @@
 import React, { useState } from 'react';
 
 interface PremiseInputProps {
-  onLoginSuccess?: (savedPrompt: string) => void;
-  onSubmit?: () => void;
-  initialValue?: string;
+  onLoginSuccess: (prompt: string) => void;
+  onSubmit: () => void;
 }
 
-export const PremiseInput: React.FC<PremiseInputProps> = ({
-  onLoginSuccess,
-  onSubmit,
-  initialValue = ''
-}) => {
-  const [premise, setPremise] = useState(initialValue);
+export const PremiseInput: React.FC<PremiseInputProps> = ({ onLoginSuccess, onSubmit }) => {
+  const [prompt, setPrompt] = useState('');
 
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (onLoginSuccess) {
-      onLoginSuccess(premise);
-    }
-    if (onSubmit) {
-      onSubmit();
-    }
+  const wordCount = prompt.trim() ? prompt.trim().split(/\s+/).length : 0;
+
+  const handleSubmit = () => {
+    if (!prompt.trim()) return;
+    onLoginSuccess(prompt);
+    onSubmit();
   };
 
   return (
-    <div className="space-y-4">
+    <div className="relative w-full bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-4">
       <textarea
-        value={premise}
-        onChange={(e) => setPremise(e.target.value)}
-        rows={7}
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
         placeholder="Describe your project concept, main idea, tone, or hook..."
-        className="w-full bg-slate-950 text-slate-100 placeholder-slate-500 border border-slate-800 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-500 resize-none text-left"
+        className="w-full h-40 bg-transparent text-white placeholder-slate-500 resize-none focus:outline-none text-sm"
       />
 
-      <div className="flex justify-end pt-1">
+      <div className="flex items-center justify-between pt-2 border-t border-slate-900">
+        <div className="text-xs text-slate-500">
+          💡 <span className="text-slate-400 font-medium">Tip:</span> Aim for 500 words for optimal AI story structure parsing ({wordCount}/500 words)
+        </div>
+
         <button
           type="button"
-          onClick={handleClick}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2 rounded-lg text-sm flex items-center gap-1 transition-colors cursor-pointer"
+          onClick={handleSubmit}
+          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-1 cursor-pointer"
         >
           ENTER ↵
         </button>
