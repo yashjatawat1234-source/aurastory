@@ -1,8 +1,20 @@
 {
   "rewrites": [
     {
-      "source": "/supabase-proxy/:path*",
-      "destination": "https://yhbhgvrwuhxtebvqxggi.supabase.co/:path*"
+      "source": "/auth/:path*",
+      "destination": "https://yhbhgvrwuhxtebvqxggi.supabase.co/auth/:path*"
+    },
+    {
+      "source": "/rest/:path*",
+      "destination": "https://yhbhgvrwuhxtebvqxggi.supabase.co/rest/:path*"
+    },
+    {
+      "source": "/storage/:path*",
+      "destination": "https://yhbhgvrwuhxtebvqxggi.supabase.co/storage/:path*"
+    },
+    {
+      "source": "/realtime/:path*",
+      "destination": "https://yhbhgvrwuhxtebvqxggi.supabase.co/realtime/:path*"
     }
   ]
 }
