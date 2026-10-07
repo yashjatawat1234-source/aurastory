@@ -1,6 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env['VITE_SUPABASE_URL'] || 'https://yhbhgvrwuhxtebvqxggi.supabase.co';
-const supabaseAnonKey = import.meta.env['VITE_SUPABASE_ANON_KEY'] || 'sb_publishable_dp13p3Ln8L_aVxzu_-LMzQ_ekqjeuKS';
+// Uses your app's origin URL (e.g., https://aurastory-beta.vercel.app or http://localhost:5173)
+const PROXY_URL = typeof window !== 'undefined' 
+  ? window.location.origin 
+  : (import.meta.env['VITE_SUPABASE_URL'] || '');
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(
+  PROXY_URL,
+  import.meta.env['VITE_SUPABASE_ANON_KEY'],
+  {
+    auth: {
+      flowType: 'pkce',
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+    },
+  }
+);
