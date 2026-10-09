@@ -1,12 +1,11 @@
 export default async function handler(req, res) {
   const supabaseUrl = 'https://yhbhgvrwuhxtebvqxggi.supabase.co';
   
-  // Clean up proxy path
+  // Strip '/api/proxy' prefix to extract the raw Supabase path
   const path = req.url.replace(/^\/api\/proxy/, '');
   const targetUrl = `${supabaseUrl}${path}`;
 
   try {
-    // Only pass standard headers needed by Supabase
     const headers = {};
     if (req.headers['authorization']) headers['authorization'] = req.headers['authorization'];
     if (req.headers['apikey']) headers['apikey'] = req.headers['apikey'];
@@ -23,14 +22,12 @@ export default async function handler(req, res) {
 
     const response = await fetch(targetUrl, fetchOptions);
 
-    // If Supabase issues a redirect (e.g. to Google OAuth), follow it directly
+    // If Supabase sends a 302 redirect to Google OAuth, pass the location header straight to the browser
     if (response.status >= 300 && response.status < 400 && response.headers.get('location')) {
       return res.redirect(response.status, response.headers.get('location'));
     }
 
     const data = await response.arrayBuffer();
-    
-    // Pass essential response headers
     const contentType = response.headers.get('content-type');
     if (contentType) res.setHeader('content-type', contentType);
 

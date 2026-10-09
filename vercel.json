@@ -2,15 +2,15 @@
   "rewrites": [
     {
       "source": "/auth/:path*",
-      "destination": "https://yhbhgvrwuhxtebvqxggi.supabase.co/auth/:path*"
+      "destination": "/api/proxy"
     },
     {
       "source": "/rest/:path*",
-      "destination": "https://yhbhgvrwuhxtebvqxggi.supabase.co/rest/:path*"
+      "destination": "/api/proxy"
     },
     {
       "source": "/storage/:path*",
-      "destination": "https://yhbhgvrwuhxtebvqxggi.supabase.co/storage/:path*"
+      "destination": "/api/proxy"
     },
     {
       "source": "/((?!api/.*).*)",
