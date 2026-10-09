@@ -18,7 +18,6 @@ export default defineConfig(({ mode }) => {
               req.on('data', (chunk) => {
                 body += chunk;
               });
-
               req.on('end', async () => {
                 try {
                   const { prompt } = JSON.parse(body);
@@ -27,7 +26,7 @@ export default defineConfig(({ mode }) => {
                   if (!apiKey) {
                     res.statusCode = 400;
                     res.setHeader('Content-Type', 'application/json');
-                    res.end(JSON.stringify({ error: 'API key missing in environment' }));
+                    res.end(JSON.stringify({ error: 'API key missing' }));
                     return;
                   }
 
@@ -35,17 +34,8 @@ export default defineConfig(({ mode }) => {
                     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
                     {
                       method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'x-goog-api-key': apiKey,
-                      },
-                      body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: {
-                          responseMimeType: 'application/json',
-                          temperature: 0.7,
-                        },
-                      }),
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
                     }
                   );
 
@@ -53,19 +43,19 @@ export default defineConfig(({ mode }) => {
                   res.statusCode = response.status;
                   res.setHeader('Content-Type', 'application/json');
                   res.end(JSON.stringify(data));
-                } catch (err: any) {
+                } catch (err) {
                   res.statusCode = 500;
                   res.setHeader('Content-Type', 'application/json');
-                  res.end(JSON.stringify({ error: err.message }));
+                  res.end(JSON.stringify({ error: (err as Error).message }));
                 }
               });
-            } else {
-              res.statusCode = 405;
-              res.end('Method Not Allowed');
             }
           });
         },
       },
     ],
+    server: {
+      port: 5173,
+    },
   };
 });
