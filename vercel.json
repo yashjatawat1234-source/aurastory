@@ -1,6 +1,18 @@
 {
   "rewrites": [
     {
+      "source": "/auth/:path*",
+      "destination": "/api/proxy"
+    },
+    {
+      "source": "/rest/:path*",
+      "destination": "/api/proxy"
+    },
+    {
+      "source": "/storage/:path*",
+      "destination": "/api/proxy"
+    },
+    {
       "source": "/((?!api/.*).*)",
       "destination": "/index.html"
     }
