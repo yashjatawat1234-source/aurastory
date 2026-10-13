@@ -238,19 +238,24 @@ export default function App() {
     const handleAuthenticatedSession = (session: any) => {
       if (session?.user) {
         setShowAuthModal(false);
-        // Advance onboarding stage to Step 2 (PITCH) after login:
-        setOnboardingStage((prev) => (prev === 'PREMISE' ? 'PITCH' : prev));
+        // Force onboarding stage to Step 2 (PITCH) on successful login
+        setOnboardingStage('PITCH');
+        localStorage.setItem('aurastory_stage', 'PITCH');
       }
     };
 
-    // Check initial active session
+    // 1. Check initial active session on page load/redirect
     supabase.auth.getSession().then(({ data: { session } }) => {
-      handleAuthenticatedSession(session);
+      if (session?.user) {
+        handleAuthenticatedSession(session);
+      }
     });
 
-    // Listen for auth events
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      handleAuthenticatedSession(session);
+    // 2. Listen for real-time auth changes (OAuth redirect completion)
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || session?.user) {
+        handleAuthenticatedSession(session);
+      }
     });
 
     return () => {
