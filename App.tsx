@@ -225,19 +225,19 @@ export default function App() {
   const [projectFormat, setProjectFormat] = useState<'screenplay' | 'audio_drama' | 'novel'>('screenplay')
   const [showAuthModal, setShowAuthModal] = useState(false);
   useEffect(() => {
-    // 1. Check active session on load
+    // 1. Check for active session when app loads
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setShowAuthModal(false);
+        setOnboardingStage('PITCH'); // <--- Sets onboarding to Step 2
       }
     });
 
-    // 2. Listen for login completions
+    // 2. Listen for auth state changes after OAuth redirect
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setShowAuthModal(false);
-        // Do NOT set isWorkspaceActive(true) here!
-        // Let the onboarding steps handle progressing through Step 2 & Step 3.
+        setOnboardingStage('PITCH'); // <--- Transitions directly to Step 2
       }
     });
 
