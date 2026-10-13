@@ -40,22 +40,26 @@ function AuthModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () 
   };
 
   const handleGoogleSignIn = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setLoading(true);
-    setErrorMsg('');
+  e.stopPropagation();
+  setLoading(true);
+  setErrorMsg('');
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: 'https://aurastory-beta.vercel.app',
-      },
-    });
+  // 1. SAVE DESIRED TARGET STAGE TO LOCALSTORAGE BEFORE REDIRECT
+  localStorage.setItem('aurastory_stage', 'PITCH');
 
-    if (error) {
-      setErrorMsg(error.message);
-      setLoading(false);
-    }
-  };
+  // 2. Trigger OAuth
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: 'https://aurastory-beta.vercel.app',
+    },
+  });
+
+  if (error) {
+    setLoading(false);
+    setErrorMsg(error.message);
+  }
+};
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,37 +225,39 @@ export default function App() {
   const [isWorkspaceActive, setIsWorkspaceActive] = useState<boolean>(false);
   const [onboardingConcept, setOnboardingConcept] = useState<string>('');
 
-  // Onboarding Stage State
+  // 1. Read stored stage immediately on mount
   const [onboardingStage, setOnboardingStage] = useState<'PREMISE' | 'FORMAT_SELECT' | 'PITCH' | 'QUESTIONS'>(() => {
-    return (localStorage.getItem('aurastory_stage') as any) || 'PREMISE';
+    const saved = localStorage.getItem('aurastory_stage');
+    return (saved as any) || 'PREMISE';
   });
 
   const [projectFormat, setProjectFormat] = useState<'screenplay' | 'audio_drama' | 'novel'>('screenplay');
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // Sync stage to localStorage
+  // 2. Keep localStorage synced whenever stage updates
   useEffect(() => {
     localStorage.setItem('aurastory_stage', onboardingStage);
   }, [onboardingStage]);
 
+  // 3. Auth Session Listener
   useEffect(() => {
     const handleAuthenticatedSession = (session: any) => {
       if (session?.user) {
         setShowAuthModal(false);
-        // Force onboarding stage to Step 2 (PITCH) on successful login
-        setOnboardingStage('PITCH');
-        localStorage.setItem('aurastory_stage', 'PITCH');
+        setOnboardingStage((prev) => {
+          const stored = localStorage.getItem('aurastory_stage');
+          if (stored && stored !== 'PREMISE') return stored as any;
+          return prev === 'PREMISE' ? 'PITCH' : prev;
+        });
       }
     };
 
-    // 1. Check initial active session on page load/redirect
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         handleAuthenticatedSession(session);
       }
     });
 
-    // 2. Listen for real-time auth changes (OAuth redirect completion)
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' || session?.user) {
         handleAuthenticatedSession(session);
