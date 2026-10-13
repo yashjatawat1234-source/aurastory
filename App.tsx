@@ -40,22 +40,22 @@ function AuthModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () 
   };
 
   const handleGoogleSignIn = async (e: React.MouseEvent) => {
-  e.stopPropagation();
-  setLoading(true);
-  setErrorMsg('');
+    e.stopPropagation();
+    setLoading(true);
+    setErrorMsg('');
 
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${window.location.origin}/`,
-    },
-  });
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: 'https://aurastory-beta.vercel.app',
+      },
+    });
 
-  if (error) {
-    setErrorMsg(error.message);
-    setLoading(false);
-  }
-};
+    if (error) {
+      setErrorMsg(error.message);
+      setLoading(false);
+    }
+  };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -224,6 +224,27 @@ export default function App() {
   const [onboardingStage, setOnboardingStage] = useState<'PREMISE' | 'PITCH' | 'QUESTIONS' | 'FORMAT_SELECT'>('PREMISE');
   const [projectFormat, setProjectFormat] = useState<'screenplay' | 'audio_drama' | 'novel'>('screenplay')
   const [showAuthModal, setShowAuthModal] = useState(false);
+  useEffect(() => {
+    // 1. Check for active session when app loads
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setIsWorkspaceActive(true);
+        setShowAuthModal(false);
+      }
+    });
+
+    // 2. Listen for real-time auth changes (OAuth redirects, logins)
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setIsWorkspaceActive(true);
+        setShowAuthModal(false);
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
   console.log("CURRENT STATE:", { onboardingStage, showAuthModal });
   useEffect(() => {
     const handleGlobalClick = (e: MouseEvent) => {
