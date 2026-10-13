@@ -233,12 +233,13 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('aurastory_stage', onboardingStage);
   }, [onboardingStage]);
-  
+
   useEffect(() => {
     const handleAuthenticatedSession = (session: any) => {
       if (session?.user) {
         setShowAuthModal(false);
-        setOnboardingStage((prev) => (prev === 'PREMISE' ? 'FORMAT_SELECT' : prev));
+        // Advance onboarding stage to Step 2 (PITCH) after login:
+        setOnboardingStage((prev) => (prev === 'PREMISE' ? 'PITCH' : prev));
       }
     };
 
