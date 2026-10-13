@@ -218,27 +218,38 @@ function AuthModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () 
   );
 }
 export default function App() {
-  const [isWorkspaceActive, setIsWorkspaceActive] = useState<boolean>(false)
-  const [onboardingConcept, setOnboardingConcept] = useState<string>('')
-  // Onboarding Discovery State
-  const [onboardingStage, setOnboardingStage] = useState<'PREMISE' | 'PITCH' | 'QUESTIONS' | 'FORMAT_SELECT'>('PREMISE');
-  const [projectFormat, setProjectFormat] = useState<'screenplay' | 'audio_drama' | 'novel'>('screenplay')
+  const [isWorkspaceActive, setIsWorkspaceActive] = useState<boolean>(false);
+  const [onboardingConcept, setOnboardingConcept] = useState<string>('');
+
+  // Onboarding Stage State
+  const [onboardingStage, setOnboardingStage] = useState<'PREMISE' | 'FORMAT_SELECT' | 'PITCH' | 'QUESTIONS'>(() => {
+    return (localStorage.getItem('aurastory_stage') as any) || 'PREMISE';
+  });
+
+  const [projectFormat, setProjectFormat] = useState<'screenplay' | 'audio_drama' | 'novel'>('screenplay');
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Sync stage to localStorage
   useEffect(() => {
-    // 1. Check for active session when app loads
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    localStorage.setItem('aurastory_stage', onboardingStage);
+  }, [onboardingStage]);
+  
+  useEffect(() => {
+    const handleAuthenticatedSession = (session: any) => {
       if (session?.user) {
         setShowAuthModal(false);
-        setOnboardingStage('PITCH'); // <--- Sets onboarding to Step 2
+        setOnboardingStage((prev) => (prev === 'PREMISE' ? 'FORMAT_SELECT' : prev));
       }
+    };
+
+    // Check initial active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleAuthenticatedSession(session);
     });
 
-    // 2. Listen for auth state changes after OAuth redirect
+    // Listen for auth events
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setShowAuthModal(false);
-        setOnboardingStage('PITCH'); // <--- Transitions directly to Step 2
-      }
+      handleAuthenticatedSession(session);
     });
 
     return () => {
