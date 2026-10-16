@@ -39,23 +39,23 @@ function AuthModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () 
     onClose();
   };
 
-const handleGoogleSignIn = async (e: React.MouseEvent) => {
-  e.stopPropagation();
-  setLoading(true);
-  setErrorMsg('');
+  const handleGoogleSignIn = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLoading(true);
+    setErrorMsg('');
 
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: 'https://aurastory-beta.vercel.app?stage=PITCH',
-    },
-  });
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: 'https://aurastory-beta.vercel.app?stage=QUESTIONS',
+      },
+    });
 
-  if (error) {
-    setLoading(false);
-    setErrorMsg(error.message);
-  }
-};
+    if (error) {
+      setLoading(false);
+      setErrorMsg(error.message);
+    }
+  };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,7 +227,7 @@ export default function App() {
   const [onboardingStage, setOnboardingStage] = useState<'PREMISE' | 'FORMAT_SELECT' | 'PITCH' | 'QUESTIONS'>(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const stageFromUrl = urlParams.get('stage');
-    if (stageFromUrl === 'PITCH' || stageFromUrl === 'FORMAT_SELECT') {
+    if (stageFromUrl === 'QUESTIONS' || stageFromUrl === 'FORMAT_SELECT' || stageFromUrl === 'PITCH') {
       return stageFromUrl as any;
     }
     return (localStorage.getItem('aurastory_stage') as any) || 'PREMISE';
@@ -236,13 +236,14 @@ export default function App() {
   const [projectFormat, setProjectFormat] = useState<'screenplay' | 'audio_drama' | 'novel'>('screenplay');
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // 2. Sync URL stage directly on mount when returning from Google OAuth
+  // 2. Sync URL stage directly on mount when returning from Google OAuth & clean address bar
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const stageFromUrl = urlParams.get('stage');
-    if (stageFromUrl === 'PITCH') {
-      setOnboardingStage('PITCH');
-      localStorage.setItem('aurastory_stage', 'PITCH');
+    if (stageFromUrl === 'QUESTIONS') {
+      setOnboardingStage('QUESTIONS');
+      localStorage.setItem('aurastory_stage', 'QUESTIONS');
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
@@ -1028,7 +1029,7 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
         <div className="max-w-2xl w-full text-center space-y-6">
 
           {/* STAGE 1: INITIAL PITCH & PREMISE */}
-          {(onboardingStage === 'PREMISE' || onboardingStage === 'PITCH') && (
+          {onboardingStage === 'PREMISE' && (
             <div className="relative z-50 w-full max-w-2xl mx-auto text-center space-y-6 pointer-events-auto">
               <h1 className="text-4xl font-extrabold text-teal-400">AuraStory Studio</h1>
               <p className="text-slate-400 text-sm">Step 1 of 3: Core Story Premise</p>
