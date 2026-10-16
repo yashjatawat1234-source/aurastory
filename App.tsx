@@ -227,20 +227,21 @@ export default function App() {
   const [onboardingStage, setOnboardingStage] = useState<'PREMISE' | 'FORMAT_SELECT' | 'PITCH' | 'QUESTIONS'>(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const stageFromUrl = urlParams.get('stage');
-    if (stageFromUrl === 'QUESTIONS' || stageFromUrl === 'FORMAT_SELECT' || stageFromUrl === 'PITCH') {
-      return stageFromUrl as any;
+    if (stageFromUrl === 'QUESTIONS' || stageFromUrl === 'PITCH' || stageFromUrl === 'FORMAT_SELECT') {
+      return stageFromUrl === 'PITCH' ? 'QUESTIONS' : (stageFromUrl as any);
     }
-    return (localStorage.getItem('aurastory_stage') as any) || 'PREMISE';
+    const saved = localStorage.getItem('aurastory_stage');
+    return saved === 'PITCH' ? 'QUESTIONS' : ((saved as any) || 'PREMISE');
   });
 
   const [projectFormat, setProjectFormat] = useState<'screenplay' | 'audio_drama' | 'novel'>('screenplay');
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // 2. Sync URL stage directly on mount when returning from Google OAuth & clean address bar
+  // 2. Sync URL stage on mount & clear address bar
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const stageFromUrl = urlParams.get('stage');
-    if (stageFromUrl === 'QUESTIONS') {
+    if (stageFromUrl === 'QUESTIONS' || stageFromUrl === 'PITCH') {
       setOnboardingStage('QUESTIONS');
       localStorage.setItem('aurastory_stage', 'QUESTIONS');
       window.history.replaceState({}, document.title, window.location.pathname);
