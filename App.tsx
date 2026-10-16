@@ -223,28 +223,37 @@ export default function App() {
     return localStorage.getItem('aurastory_concept') || '';
   });
 
-  // 1. Read stage from URL or LocalStorage on mount
+  // 1. Read stage from URL on mount; default to PREMISE unless explicit URL flag exists
   const [onboardingStage, setOnboardingStage] = useState<'PREMISE' | 'FORMAT_SELECT' | 'PITCH' | 'QUESTIONS'>(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const stageFromUrl = urlParams.get('stage');
-    if (stageFromUrl === 'QUESTIONS' || stageFromUrl === 'PITCH' || stageFromUrl === 'FORMAT_SELECT') {
-      return stageFromUrl === 'PITCH' ? 'QUESTIONS' : (stageFromUrl as any);
+
+    // ONLY skip to Step 2 if coming back directly from Google OAuth redirect
+    if (stageFromUrl === 'QUESTIONS' || stageFromUrl === 'PITCH') {
+      return 'QUESTIONS';
     }
-    const saved = localStorage.getItem('aurastory_stage');
-    return saved === 'PITCH' ? 'QUESTIONS' : ((saved as any) || 'PREMISE');
+    if (stageFromUrl === 'FORMAT_SELECT') {
+      return 'FORMAT_SELECT';
+    }
+
+    return 'PREMISE';
   });
 
   const [projectFormat, setProjectFormat] = useState<'screenplay' | 'audio_drama' | 'novel'>('screenplay');
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // 2. Sync URL stage on mount & clear address bar
+  // 2. Sync URL stage directly on mount when returning from Google OAuth & clean address bar
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const stageFromUrl = urlParams.get('stage');
+
     if (stageFromUrl === 'QUESTIONS' || stageFromUrl === 'PITCH') {
       setOnboardingStage('QUESTIONS');
       localStorage.setItem('aurastory_stage', 'QUESTIONS');
       window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      // Clear cached stage on direct clean visits so users always start at Step 1
+      localStorage.removeItem('aurastory_stage');
     }
   }, []);
 
