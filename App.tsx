@@ -40,22 +40,26 @@ function AuthModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () 
   };
 
   const handleGoogleSignIn = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setLoading(true);
-    setErrorMsg('');
+  e.stopPropagation();
+  setLoading(true);
+  setErrorMsg('');
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: 'https://aurastory-beta.vercel.app?stage=QUESTIONS',
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: 'https://aurastory-beta.vercel.app?stage=QUESTIONS',
+      queryParams: {
+        prompt: 'consent', // Enforces the explicit 'Continue' consent screen
+        access_type: 'offline',
       },
-    });
+    },
+  });
 
-    if (error) {
-      setLoading(false);
-      setErrorMsg(error.message);
-    }
-  };
+  if (error) {
+    setLoading(false);
+    setErrorMsg(error.message);
+  }
+};
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
