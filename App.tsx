@@ -219,9 +219,11 @@ const handleGoogleSignIn = async (e: React.MouseEvent) => {
 }
 export default function App() {
   const [isWorkspaceActive, setIsWorkspaceActive] = useState<boolean>(false);
-  const [onboardingConcept, setOnboardingConcept] = useState<string>('');
+  const [onboardingConcept, setOnboardingConcept] = useState<string>(() => {
+    return localStorage.getItem('aurastory_concept') || '';
+  });
 
-  // 1. Read stage directly from URL query param when Google redirects back
+  // 1. Read stage from URL or LocalStorage on mount
   const [onboardingStage, setOnboardingStage] = useState<'PREMISE' | 'FORMAT_SELECT' | 'PITCH' | 'QUESTIONS'>(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const stageFromUrl = urlParams.get('stage');
@@ -234,12 +236,22 @@ export default function App() {
   const [projectFormat, setProjectFormat] = useState<'screenplay' | 'audio_drama' | 'novel'>('screenplay');
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // 2. Keep localStorage synced whenever stage updates
+  // 2. Sync URL stage directly on mount when returning from Google OAuth
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const stageFromUrl = urlParams.get('stage');
+    if (stageFromUrl === 'PITCH') {
+      setOnboardingStage('PITCH');
+      localStorage.setItem('aurastory_stage', 'PITCH');
+    }
+  }, []);
+
+  // 3. Keep localStorage synced whenever stage updates
   useEffect(() => {
     localStorage.setItem('aurastory_stage', onboardingStage);
   }, [onboardingStage]);
 
-  // 3. Auth Listener to close modal on login
+  // 4. Auth Session Listener
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
