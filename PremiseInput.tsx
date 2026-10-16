@@ -10,8 +10,13 @@ export const PremiseInput: React.FC<PremiseInputProps> = ({ onLoginSuccess, onSu
 
   const wordCount = prompt.trim() ? prompt.trim().split(/\s+/).length : 0;
 
-  const handleSubmit = () => {
+  const handleSubmit = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
     if (!prompt.trim()) return;
+
+    // Persist the user's input so it survives the OAuth redirect
+    localStorage.setItem('aurastory_concept', prompt);
+
     onLoginSuccess(prompt);
     onSubmit();
   };
