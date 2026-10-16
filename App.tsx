@@ -39,19 +39,15 @@ function AuthModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () 
     onClose();
   };
 
-  const handleGoogleSignIn = async (e: React.MouseEvent) => {
+const handleGoogleSignIn = async (e: React.MouseEvent) => {
   e.stopPropagation();
   setLoading(true);
   setErrorMsg('');
 
-  // 1. SAVE DESIRED TARGET STAGE TO LOCALSTORAGE BEFORE REDIRECT
-  localStorage.setItem('aurastory_stage', 'PITCH');
-
-  // 2. Trigger OAuth
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: 'https://aurastory-beta.vercel.app',
+      redirectTo: 'https://aurastory-beta.vercel.app?stage=PITCH',
     },
   });
 
@@ -225,10 +221,14 @@ export default function App() {
   const [isWorkspaceActive, setIsWorkspaceActive] = useState<boolean>(false);
   const [onboardingConcept, setOnboardingConcept] = useState<string>('');
 
-  // 1. Read stored stage immediately on mount
+  // 1. Read stage directly from URL query param when Google redirects back
   const [onboardingStage, setOnboardingStage] = useState<'PREMISE' | 'FORMAT_SELECT' | 'PITCH' | 'QUESTIONS'>(() => {
-    const saved = localStorage.getItem('aurastory_stage');
-    return (saved as any) || 'PREMISE';
+    const urlParams = new URLSearchParams(window.location.search);
+    const stageFromUrl = urlParams.get('stage');
+    if (stageFromUrl === 'PITCH' || stageFromUrl === 'FORMAT_SELECT') {
+      return stageFromUrl as any;
+    }
+    return (localStorage.getItem('aurastory_stage') as any) || 'PREMISE';
   });
 
   const [projectFormat, setProjectFormat] = useState<'screenplay' | 'audio_drama' | 'novel'>('screenplay');
@@ -239,28 +239,11 @@ export default function App() {
     localStorage.setItem('aurastory_stage', onboardingStage);
   }, [onboardingStage]);
 
-  // 3. Auth Session Listener
+  // 3. Auth Listener to close modal on login
   useEffect(() => {
-    const handleAuthenticatedSession = (session: any) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setShowAuthModal(false);
-        setOnboardingStage((prev) => {
-          const stored = localStorage.getItem('aurastory_stage');
-          if (stored && stored !== 'PREMISE') return stored as any;
-          return prev === 'PREMISE' ? 'PITCH' : prev;
-        });
-      }
-    };
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        handleAuthenticatedSession(session);
-      }
-    });
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || session?.user) {
-        handleAuthenticatedSession(session);
       }
     });
 
