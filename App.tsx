@@ -6,6 +6,7 @@ import { ScreenplayEditor, ScriptBlock } from './ScreenplayEditor';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { SceneVisualizer } from './SceneVisualizer';
 import { supabase } from './src/lib/supabase';
+import { StoryDiscoveryStep } from './components/StoryDiscoveryStep';
 
 interface Scene {
   id: string;
@@ -40,26 +41,26 @@ function AuthModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () 
   };
 
   const handleGoogleSignIn = async (e: React.MouseEvent) => {
-  e.stopPropagation();
-  setLoading(true);
-  setErrorMsg('');
+    e.stopPropagation();
+    setLoading(true);
+    setErrorMsg('');
 
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: 'https://aurastory-beta.vercel.app?stage=QUESTIONS',
-      queryParams: {
-        prompt: 'consent', // Enforces the explicit 'Continue' consent screen
-        access_type: 'offline',
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: 'https://aurastory-beta.vercel.app?stage=QUESTIONS',
+        queryParams: {
+          prompt: 'consent', // Enforces the explicit 'Continue' consent screen
+          access_type: 'offline',
+        },
       },
-    },
-  });
+    });
 
-  if (error) {
-    setLoading(false);
-    setErrorMsg(error.message);
-  }
-};
+    if (error) {
+      setLoading(false);
+      setErrorMsg(error.message);
+    }
+  };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1078,563 +1079,509 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
               />
             </div>
           )}
-          {/* STAGE 2: DEEP QUESTIONS */}
+          {/* STAGE 2: DEEP DISCOVERY QUESTIONS */}
           {onboardingStage === 'QUESTIONS' && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl text-left space-y-4">
-              <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wider">Story Discovery</p>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">1. Who is the main protagonist and what is their immediate goal?</label>
-                  <input
-                    type="text"
-                    value={discoveryAnswers.protagonist}
-                    onChange={(e) => setDiscoveryAnswers({ ...discoveryAnswers, protagonist: e.target.value })}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50"
-                    placeholder="e.g., Detective Miles searching for a missing transmission key"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">2. What major obstacle or antagonist stands in their way?</label>
-                  <input
-                    type="text"
-                    value={discoveryAnswers.conflict}
-                    onChange={(e) => setDiscoveryAnswers({ ...discoveryAnswers, conflict: e.target.value })}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50"
-                    placeholder="e.g., A corrupt syndicate enforcing a city-wide blackout"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">3. Describe the atmosphere or core setting of the story:</label>
-                  <input
-                    type="text"
-                    value={discoveryAnswers.worldTone}
-                    onChange={(e) => setDiscoveryAnswers({ ...discoveryAnswers, worldTone: e.target.value })}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50"
-                    placeholder="e.g., Rain-slicked dystopian cyberpunk city, dark and suspenseful"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">4. Is there a secret or twist driving early chapters?</label>
-                  <input
-                    type="text"
-                    value={discoveryAnswers.keyTwist}
-                    onChange={(e) => setDiscoveryAnswers({ ...discoveryAnswers, keyTwist: e.target.value })}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50"
-                    placeholder="e.g., The missing cipher is hidden inside the protagonist's medallion"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center pt-3 border-t border-slate-800">
-                <button
-                  onClick={() => setOnboardingStage('PITCH')}
-                  className="text-xs text-slate-400 hover:text-slate-200"
-                >
-                  ← Back
-                </button>
-                <button
-                  onClick={() => setOnboardingStage('FORMAT_SELECT')}
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors text-sm shadow-lg shadow-emerald-900/30"
-                >
-                  Choose Format →
-                </button>
-              </div>
-            </div>
+            <StoryDiscoveryStep
+              concept={onboardingConcept}
+              onNext={(answers) => {
+                localStorage.setItem('aurastory_answers', JSON.stringify(answers));
+                setOnboardingStage('FORMAT_SELECT');
+              }}
+              onBack={() => setOnboardingStage('PREMISE')}
+            />
           )}
 
-          {/* STAGE 3: FORMAT SELECTION */}
-          {onboardingStage === 'FORMAT_SELECT' && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl text-left space-y-5">
-              <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wider">Choose Workspace Layout</p>
+  {/* STAGE 3: FORMAT SELECTION */ }
+  {
+    onboardingStage === 'FORMAT_SELECT' && (
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl text-left space-y-5">
+        <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wider">Choose Workspace Layout</p>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setProjectFormat('screenplay')}
-                  className={`p-4 rounded-xl border text-left transition-all ${projectFormat === 'screenplay'
-                    ? 'border-emerald-500 bg-emerald-950/20 shadow-md shadow-emerald-950/50'
-                    : 'border-slate-800 bg-slate-950/40 hover:border-slate-700'
-                    }`}
-                >
-                  <div className="text-lg mb-1">🎬</div>
-                  <div className="font-semibold text-sm text-slate-100">Screenplay</div>
-                  <div className="text-xs text-slate-400 mt-1">Standard scene sluglines, character cues, dialogue parents.</div>
-                </button>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <button
+            type="button"
+            onClick={() => setProjectFormat('screenplay')}
+            className={`p-4 rounded-xl border text-left transition-all ${projectFormat === 'screenplay'
+              ? 'border-emerald-500 bg-emerald-950/20 shadow-md shadow-emerald-950/50'
+              : 'border-slate-800 bg-slate-950/40 hover:border-slate-700'
+              }`}
+          >
+            <div className="text-lg mb-1">🎬</div>
+            <div className="font-semibold text-sm text-slate-100">Screenplay</div>
+            <div className="text-xs text-slate-400 mt-1">Standard scene sluglines, character cues, dialogue parents.</div>
+          </button>
 
-                <button
-                  type="button"
-                  onClick={() => setProjectFormat('audio_drama')}
-                  className={`p-4 rounded-xl border text-left transition-all ${projectFormat === 'audio_drama'
-                    ? 'border-emerald-500 bg-emerald-950/20 shadow-md shadow-emerald-950/50'
-                    : 'border-slate-800 bg-slate-950/40 hover:border-slate-700'
-                    }`}
-                >
-                  <div className="text-lg mb-1">🎙️</div>
-                  <div className="font-semibold text-sm text-slate-100">Audio Drama</div>
-                  <div className="text-xs text-slate-400 mt-1">Episodic layout formatted with SFX, ambient sound, and voice cues.</div>
-                </button>
+          <button
+            type="button"
+            onClick={() => setProjectFormat('audio_drama')}
+            className={`p-4 rounded-xl border text-left transition-all ${projectFormat === 'audio_drama'
+              ? 'border-emerald-500 bg-emerald-950/20 shadow-md shadow-emerald-950/50'
+              : 'border-slate-800 bg-slate-950/40 hover:border-slate-700'
+              }`}
+          >
+            <div className="text-lg mb-1">🎙️</div>
+            <div className="font-semibold text-sm text-slate-100">Audio Drama</div>
+            <div className="text-xs text-slate-400 mt-1">Episodic layout formatted with SFX, ambient sound, and voice cues.</div>
+          </button>
 
-                <button
-                  type="button"
-                  onClick={() => setProjectFormat('novel')}
-                  className={`p-4 rounded-xl border text-left transition-all ${projectFormat === 'novel'
-                    ? 'border-emerald-500 bg-emerald-950/20 shadow-md shadow-emerald-950/50'
-                    : 'border-slate-800 bg-slate-950/40 hover:border-slate-700'
-                    }`}
-                >
-                  <div className="text-lg mb-1">📖</div>
-                  <div className="font-semibold text-sm text-slate-100">Prose / Novel</div>
-                  <div className="text-xs text-slate-400 mt-1">Rich narrative descriptions, indented prose, and chapter breaks.</div>
-                </button>
-              </div>
+          <button
+            type="button"
+            onClick={() => setProjectFormat('novel')}
+            className={`p-4 rounded-xl border text-left transition-all ${projectFormat === 'novel'
+              ? 'border-emerald-500 bg-emerald-950/20 shadow-md shadow-emerald-950/50'
+              : 'border-slate-800 bg-slate-950/40 hover:border-slate-700'
+              }`}
+          >
+            <div className="text-lg mb-1">📖</div>
+            <div className="font-semibold text-sm text-slate-100">Prose / Novel</div>
+            <div className="text-xs text-slate-400 mt-1">Rich narrative descriptions, indented prose, and chapter breaks.</div>
+          </button>
+        </div>
 
-              <div className="flex justify-between items-center pt-3 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setOnboardingStage('QUESTIONS')}
-                  className="text-xs text-slate-400 hover:text-slate-200"
-                >
-                  ← Back
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLaunchWorkspace}
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold transition-colors text-sm shadow-lg shadow-emerald-900/40"
-                >
-                  Launch Workspace →
-                </button>
-              </div>
-            </div>
-          )}
-
+        <div className="flex justify-between items-center pt-3 border-t border-slate-800">
+          <button
+            type="button"
+            onClick={() => setOnboardingStage('QUESTIONS')}
+            className="text-xs text-slate-400 hover:text-slate-200"
+          >
+            ← Back
+          </button>
+          <button
+            type="button"
+            onClick={handleLaunchWorkspace}
+            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold transition-colors text-sm shadow-lg shadow-emerald-900/40"
+          >
+            Launch Workspace →
+          </button>
         </div>
       </div>
     )
   }
-  const insertFormattingTag = (prefix: string, defaultText: string) => {
-    setStoryCanvas((prev) => (prev || '') + `\n\n${prefix}${defaultText}`)
-  }
-  return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans">
-      {/* Left Sidebar */}
-      {isSidebarOpen && (
-        <aside className="w-72 bg-slate-900 border-r border-slate-800 p-4 flex flex-col justify-between shrink-0">
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-sm font-bold text-emerald-400 uppercase tracking-wider">
-                📚 Chapter Manager
-              </h2>
-              <button
-                onClick={() => setIsSidebarOpen(false)}
-                className="text-slate-400 hover:text-slate-200 text-xs"
-              >
-                ◀
-              </button>
-            </div>
 
-            <form onSubmit={handleAddChapter} className="mb-6 flex gap-1.5">
-              <input
-                type="text"
-                placeholder="New Chapter Title..."
-                value={newChapterTitle}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewChapterTitle(e.target.value)}
-                className="flex-1 bg-slate-950 border border-slate-700 text-slate-200 px-2.5 py-1.5 rounded text-xs focus:outline-none focus:border-emerald-500"
-                required
-              />
-              <button
-                type="submit"
-                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold rounded text-xs"
-              >
-                +
-              </button>
-            </form>
-
-            <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-220px)]">
-              {chapters.map((ch: Chapter) => (
-                <div key={ch.id} className="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-semibold text-xs text-slate-200">{ch.title}</span>
-                    <button
-                      onClick={() => handleAddScene(ch.id)}
-                      className="text-[10px] text-emerald-400 hover:underline"
-                    >
-                      + Scene
-                    </button>
-                  </div>
-                  <div className="space-y-1 pl-2">
-                    {ch.scenes.map((sc: Scene) => (
-                      <button
-                        key={sc.id}
-                        onClick={() => handleSelectScene(sc.id)}
-                        className={`w-full text-left px-2 py-1 rounded text-xs transition-colors flex items-center justify-between ${activeSceneId === sc.id
-                          ? 'bg-emerald-950 text-emerald-300 font-medium border border-emerald-800'
-                          : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
-                          }`}
-                      >
-                        <span className="truncate">{sc.title}</span>
-                        {activeSceneId === sc.id && <span className="text-[10px]">✏️</span>}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+        </div >
+      </div >
+    )
+}
+const insertFormattingTag = (prefix: string, defaultText: string) => {
+  setStoryCanvas((prev) => (prev || '') + `\n\n${prefix}${defaultText}`)
+}
+return (
+  <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans">
+    {/* Left Sidebar */}
+    {isSidebarOpen && (
+      <aside className="w-72 bg-slate-900 border-r border-slate-800 p-4 flex flex-col justify-between shrink-0">
+        <div>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-sm font-bold text-emerald-400 uppercase tracking-wider">
+              📚 Chapter Manager
+            </h2>
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="text-slate-400 hover:text-slate-200 text-xs"
+            >
+              ◀
+            </button>
           </div>
 
-          <div className="text-[11px] text-slate-500 text-center pt-4 border-t border-slate-800">
-            AuraStory Workspace v1.0
-          </div>
-        </aside>
-      )}
-
-      {/* Main Area */}
-      <main className="flex-1 p-8 max-w-5xl mx-auto relative">
-        <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            {!isSidebarOpen && (
-              <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs"
-              >
-                ▶ Chapters
-              </button>
-            )}
-            <h1 className="text-2xl font-bold text-emerald-400">AuraStory Editor</h1>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
+          <form onSubmit={handleAddChapter} className="mb-6 flex gap-1.5">
             <input
-              type="password"
-              placeholder="Gemini API Key..."
-              value={apiKey}
-              onChange={(e) => {
-                setApiKey(e.target.value)
-                localStorage.setItem('aurastory_gemini_key', e.target.value)
-              }}
-              className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-44 transition-colors"
+              type="text"
+              placeholder="New Chapter Title..."
+              value={newChapterTitle}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewChapterTitle(e.target.value)}
+              className="flex-1 bg-slate-950 border border-slate-700 text-slate-200 px-2.5 py-1.5 rounded text-xs focus:outline-none focus:border-emerald-500"
+              required
             />
+            <button
+              type="submit"
+              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold rounded text-xs"
+            >
+              +
+            </button>
+          </form>
+
+          <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-220px)]">
+            {chapters.map((ch: Chapter) => (
+              <div key={ch.id} className="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-semibold text-xs text-slate-200">{ch.title}</span>
+                  <button
+                    onClick={() => handleAddScene(ch.id)}
+                    className="text-[10px] text-emerald-400 hover:underline"
+                  >
+                    + Scene
+                  </button>
+                </div>
+                <div className="space-y-1 pl-2">
+                  {ch.scenes.map((sc: Scene) => (
+                    <button
+                      key={sc.id}
+                      onClick={() => handleSelectScene(sc.id)}
+                      className={`w-full text-left px-2 py-1 rounded text-xs transition-colors flex items-center justify-between ${activeSceneId === sc.id
+                        ? 'bg-emerald-950 text-emerald-300 font-medium border border-emerald-800'
+                        : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                        }`}
+                    >
+                      <span className="truncate">{sc.title}</span>
+                      {activeSceneId === sc.id && <span className="text-[10px]">✏️</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="text-[11px] text-slate-500 text-center pt-4 border-t border-slate-800">
+          AuraStory Workspace v1.0
+        </div>
+      </aside>
+    )}
+
+    {/* Main Area */}
+    <main className="flex-1 p-8 max-w-5xl mx-auto relative">
+      <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          {!isSidebarOpen && (
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs"
+            >
+              ▶ Chapters
+            </button>
+          )}
+          <h1 className="text-2xl font-bold text-emerald-400">AuraStory Editor</h1>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="password"
+            placeholder="Gemini API Key..."
+            value={apiKey}
+            onChange={(e) => {
+              setApiKey(e.target.value)
+              localStorage.setItem('aurastory_gemini_key', e.target.value)
+            }}
+            className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-44 transition-colors"
+          />
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 bg-blue-950 hover:bg-blue-900 text-blue-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
+          >
+            📇 Export
+          </button>
+          <button
+            onClick={() => setIsScratchpadOpen(!isScratchpadOpen)}
+            className="px-4 py-2 bg-purple-950 hover:bg-purple-900 text-purple-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
+          >
+            📜 Scratchpad
+          </button>
+          <button
+            onClick={() => setIsWhatIfOpen(!isWhatIfOpen)}
+            className="px-4 py-2 bg-amber-950 hover:bg-amber-900 text-amber-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
+          >
+            ⚡ What If?
+          </button>
+          <button
+            onClick={() => setIsBibleOpen(!isBibleOpen)}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
+          >
+            📖 Story Bible ({storyBible.length})
+          </button>
+        </div>
+      </div>
+
+      {/* Export Drawer */}
+      {isExportOpen && (
+        <div className="mb-8 p-5 bg-slate-900 border border-blue-500/40 rounded-xl shadow-2xl">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-sm font-semibold text-blue-300">📥 Manuscript & Lore Exporter</h2>
+            <button onClick={() => setIsExportOpen(false)} className="text-slate-400 text-xs">
+              ✕
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-3 mt-3">
             <button
               onClick={handleExport}
-              className="px-4 py-2 bg-blue-950 hover:bg-blue-900 text-blue-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs"
             >
-              📇 Export
+              📄 Download Full Manuscript (.txt)
             </button>
             <button
-              onClick={() => setIsScratchpadOpen(!isScratchpadOpen)}
-              className="px-4 py-2 bg-purple-950 hover:bg-purple-900 text-purple-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
+              onClick={handleExportLoreJSON}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-blue-300 rounded-lg text-xs border border-blue-800"
             >
-              📜 Scratchpad
-            </button>
-            <button
-              onClick={() => setIsWhatIfOpen(!isWhatIfOpen)}
-              className="px-4 py-2 bg-amber-950 hover:bg-amber-900 text-amber-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
-            >
-              ⚡ What If?
-            </button>
-            <button
-              onClick={() => setIsBibleOpen(!isBibleOpen)}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
-            >
-              📖 Story Bible ({storyBible.length})
+              💾 Download Lore Bible (.json)
             </button>
           </div>
         </div>
+      )}
 
-        {/* Export Drawer */}
-        {isExportOpen && (
-          <div className="mb-8 p-5 bg-slate-900 border border-blue-500/40 rounded-xl shadow-2xl">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-sm font-semibold text-blue-300">📥 Manuscript & Lore Exporter</h2>
-              <button onClick={() => setIsExportOpen(false)} className="text-slate-400 text-xs">
-                ✕
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-3 mt-3">
-              <button
-                onClick={handleExport}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs"
-              >
-                📄 Download Full Manuscript (.txt)
-              </button>
-              <button
-                onClick={handleExportLoreJSON}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-blue-300 rounded-lg text-xs border border-blue-800"
-              >
-                💾 Download Lore Bible (.json)
-              </button>
-            </div>
+      {/* Scratchpad Drawer */}
+      {isScratchpadOpen && (
+        <div className="mb-8 p-5 bg-slate-900 border border-purple-500/40 rounded-xl shadow-2xl">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-sm font-semibold text-purple-300">📝 Scratchpad</h2>
+            <button onClick={() => setIsScratchpadOpen(false)} className="text-slate-400 text-xs">
+              ✕
+            </button>
           </div>
-        )}
+          <textarea
+            value={scratchpadText}
+            onChange={(e) => setScratchpadText(e.target.value)}
+            className="w-full min-h-[250px] bg-slate-950/50 border border-slate-800 rounded-lg p-3 text-slate-200 text-sm focus:outline-none focus:border-emerald-500/50 resize-y"
+            placeholder="Jot down notes, character ideas, or plot points here..."
+          />
+        </div>
+      )}
 
-        {/* Scratchpad Drawer */}
-        {isScratchpadOpen && (
-          <div className="mb-8 p-5 bg-slate-900 border border-purple-500/40 rounded-xl shadow-2xl">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-sm font-semibold text-purple-300">📝 Scratchpad</h2>
-              <button onClick={() => setIsScratchpadOpen(false)} className="text-slate-400 text-xs">
-                ✕
-              </button>
-            </div>
-            <textarea
-              value={scratchpadText}
-              onChange={(e) => setScratchpadText(e.target.value)}
-              className="w-full min-h-[250px] bg-slate-950/50 border border-slate-800 rounded-lg p-3 text-slate-200 text-sm focus:outline-none focus:border-emerald-500/50 resize-y"
-              placeholder="Jot down notes, character ideas, or plot points here..."
+      {/* What If Drawer */}
+      {isWhatIfOpen && (
+        <div className="p-5 bg-slate-900 border border-slate-800 rounded-xl shadow-lg mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-sm font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+              ⚡ What If? Narrative Brainstormer
+            </h2>
+            <button
+              onClick={() => setIsWhatIfOpen(false)}
+              className="text-slate-500 hover:text-slate-300 text-sm"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              placeholder="Enter a prompt or plot scenario (e.g., Jack finds the cipher)..."
+              value={whatIfPrompt}
+              onChange={(e) => setWhatIfPrompt(e.target.value)}
+              className="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500"
             />
+            <button
+              onClick={handleWhatIf}
+              disabled={isGenerating}
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 text-slate-950 font-semibold text-sm rounded-lg transition-colors"
+            >
+              {isGenerating ? 'Thinking...' : 'Explore'}
+            </button>
           </div>
-        )}
 
-        {/* What If Drawer */}
-        {isWhatIfOpen && (
-          <div className="p-5 bg-slate-900 border border-slate-800 rounded-xl shadow-lg mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                ⚡ What If? Narrative Brainstormer
-              </h2>
-              <button
-                onClick={() => setIsWhatIfOpen(false)}
-                className="text-slate-500 hover:text-slate-300 text-sm"
-              >
-                ✕
-              </button>
-            </div>
+          {whatIfOutput && (
+            <p className="text-xs text-amber-300 italic mb-3">{whatIfOutput}</p>
+          )}
 
-            <div className="flex gap-2 mb-4">
-              <input
-                type="text"
-                placeholder="Enter a prompt or plot scenario (e.g., Jack finds the cipher)..."
-                value={whatIfPrompt}
-                onChange={(e) => setWhatIfPrompt(e.target.value)}
-                className="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500"
-              />
-              <button
-                onClick={handleWhatIf}
-                disabled={isGenerating}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 text-slate-950 font-semibold text-sm rounded-lg transition-colors"
-              >
-                {isGenerating ? 'Thinking...' : 'Explore'}
-              </button>
-            </div>
-
-            {whatIfOutput && (
-              <p className="text-xs text-amber-300 italic mb-3">{whatIfOutput}</p>
-            )}
-
-            {whatIfBranches.length > 0 && (
-              <div className="space-y-2 mt-4">
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Alternate Plot Branches</span>
-                {whatIfBranches.map((branch, index) => (
-                  <div
-                    key={index}
-                    className="p-3 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-lg flex justify-between items-center transition-all group"
-                  >
-                    <p className="text-xs text-slate-300 leading-relaxed pr-3">{branch}</p>
-                    <button
-                      onClick={() => setStoryCanvas((prev) => prev + `\n\n[Plot Twist]: ${branch}`)}
-                      className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[11px] font-medium rounded whitespace-nowrap transition-colors"
-                    >
-                      + Insert to Canvas
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Story Bible Drawer */}
-        {isBibleOpen && (
-          <div className="mb-8 p-5 bg-slate-900 border border-emerald-500/40 rounded-xl shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-semibold text-emerald-300">Story Bible</h2>
-              <button onClick={() => setIsBibleOpen(false)} className="text-slate-400 text-xs">
-                ✕
-              </button>
-            </div>
-            <div className="flex gap-2 mb-3">
-              <input
-                type="text"
-                placeholder="Entry Name (e.g. Jack)"
-                value={newEntryName}
-                onChange={(e) => setNewEntryName(e.target.value)}
-                className="px-3 py-1 bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-lg flex-1"
-              />
-              <input
-                type="text"
-                placeholder="Details (e.g. Seeking medallion cipher)"
-                value={newEntryState}
-                onChange={(e) => setNewEntryState(e.target.value)}
-                className="px-3 py-1 bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-lg flex-1"
-              />
-              <button
-                onClick={handleAddBibleEntry}
-                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-semibold text-xs rounded-lg"
-              >
-                Add
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {storyBible.map((entry: BibleEntry, idx: number) => (
-                <div key={idx} className="relative p-3 bg-slate-950 rounded-lg border border-slate-800">
+          {whatIfBranches.length > 0 && (
+            <div className="space-y-2 mt-4">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Alternate Plot Branches</span>
+              {whatIfBranches.map((branch, index) => (
+                <div
+                  key={index}
+                  className="p-3 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-lg flex justify-between items-center transition-all group"
+                >
+                  <p className="text-xs text-slate-300 leading-relaxed pr-3">{branch}</p>
                   <button
-                    onClick={() => handleDeleteBibleEntry(idx)}
-                    className="absolute top-2 right-2 text-slate-500 hover:text-red-400 text-xs transition-colors"
-                    title="Delete Entry"
+                    onClick={() => setStoryCanvas((prev) => prev + `\n\n[Plot Twist]: ${branch}`)}
+                    className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[11px] font-medium rounded whitespace-nowrap transition-colors"
                   >
-                    ✕
+                    + Insert to Canvas
                   </button>
-                  <span className="font-bold text-xs text-slate-200">{entry.name}</span>
-                  <p className="text-[11px] text-slate-400">{entry.current_state}</p>
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        {/* Active Canvas Editor */}
-        <div className="p-5 bg-slate-900 border border-slate-800 rounded-xl shadow-lg mb-8">
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-slate-100">
-                Active Scene Canvas
-              </h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-full border border-slate-700 bg-slate-800 text-slate-300 font-medium">
-                {projectFormat === 'screenplay' && '🎬 Screenplay Mode'}
-                {projectFormat === 'audio_drama' && '🎙️ Audio Drama Mode'}
-                {projectFormat === 'novel' && '📖 Prose / Novel Mode'}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={handleAutoContinueScene}
-              disabled={isGenerating}
-              className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 text-xs font-semibold rounded-lg transition shadow-md cursor-pointer disabled:cursor-not-allowed"
-            >
-              {isGenerating ? (
-                <>
-                  <svg
-                    className="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-slate-950"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  <span>Generating Beats...</span>
-                </>
-              ) : (
-                <>
-                  <span>✨ Auto-Continue Scene</span>
-                </>
-              )}
+      {/* Story Bible Drawer */}
+      {isBibleOpen && (
+        <div className="mb-8 p-5 bg-slate-900 border border-emerald-500/40 rounded-xl shadow-2xl">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-sm font-semibold text-emerald-300">Story Bible</h2>
+            <button onClick={() => setIsBibleOpen(false)} className="text-slate-400 text-xs">
+              ✕
             </button>
           </div>
-
-          {/* FORMAT-SPECIFIC TOOLBAR */}
-          <div className="flex items-center gap-1.5 mb-3 p-1.5 bg-slate-900 border border-slate-800 rounded-lg">
-            {projectFormat === 'screenplay' && (
-              <>
-                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
-                  FORMAT:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => addBlockToActiveScene('SCENE_HEADING', 'INT. ')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition cursor-pointer"
-                >
-                  + INT.
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addBlockToActiveScene('SCENE_HEADING', 'EXT. ')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition cursor-pointer"
-                >
-                  + EXT.
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addBlockToActiveScene('CHARACTER', '')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-medium rounded text-xs transition cursor-pointer"
-                >
-                  + Character Cue
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addBlockToActiveScene('PARENTHETICAL', '(')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded text-xs transition cursor-pointer"
-                >
-                  + (Parenthetical)
-                </button>
-              </>
-            )}
-
-            {projectFormat === 'audio_drama' && (
-              <>
-                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
-                  Audio Cues
-                </span>
-                <button
-                  type="button"
-                  onClick={() => insertFormattingTag('[SFX: ', 'Thunder rumble in distance]')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded font-mono text-xs"
-                >
-                  + [SFX]
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertFormattingTag('[MUSIC: ', 'Low tense synth pad builds]')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded font-mono text-xs"
-                >
-                  + [MUSIC]
-                </button>
-              </>
-            )}
-
-            {projectFormat === 'novel' && (
-              <>
-                <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
-                  Prose
-                </span>
-                <button
-                  type="button"
-                  onClick={() => insertFormattingTag('\n***\n', '')}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs"
-                >
-                  + Scene Break (***)
-                </button>
-              </>
-            )}
+          <div className="flex gap-2 mb-3">
+            <input
+              type="text"
+              placeholder="Entry Name (e.g. Jack)"
+              value={newEntryName}
+              onChange={(e) => setNewEntryName(e.target.value)}
+              className="px-3 py-1 bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-lg flex-1"
+            />
+            <input
+              type="text"
+              placeholder="Details (e.g. Seeking medallion cipher)"
+              value={newEntryState}
+              onChange={(e) => setNewEntryState(e.target.value)}
+              className="px-3 py-1 bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-lg flex-1"
+            />
+            <button
+              onClick={handleAddBibleEntry}
+              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-semibold text-xs rounded-lg"
+            >
+              Add
+            </button>
           </div>
-
-          <ScreenplayEditor
-            blocks={getActiveBlocks()}
-            onChange={handleUpdateActiveBlocks}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {storyBible.map((entry: BibleEntry, idx: number) => (
+              <div key={idx} className="relative p-3 bg-slate-950 rounded-lg border border-slate-800">
+                <button
+                  onClick={() => handleDeleteBibleEntry(idx)}
+                  className="absolute top-2 right-2 text-slate-500 hover:text-red-400 text-xs transition-colors"
+                  title="Delete Entry"
+                >
+                  ✕
+                </button>
+                <span className="font-bold text-xs text-slate-200">{entry.name}</span>
+                <p className="text-[11px] text-slate-400">{entry.current_state}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      </main>
+      )}
 
-      {/* RIGHT SIDEBAR: Scene Storyboard Visualizer */}
-      <SceneVisualizer
-        sceneTitle={activeScene?.title || 'Current Scene'}
-        blocks={getActiveBlocks()}
-        userTier="pro"
-      />
-    </div>
-  );
+      {/* Active Canvas Editor */}
+      <div className="p-5 bg-slate-900 border border-slate-800 rounded-xl shadow-lg mb-8">
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-slate-100">
+              Active Scene Canvas
+            </h2>
+            <span className="text-xs px-2.5 py-0.5 rounded-full border border-slate-700 bg-slate-800 text-slate-300 font-medium">
+              {projectFormat === 'screenplay' && '🎬 Screenplay Mode'}
+              {projectFormat === 'audio_drama' && '🎙️ Audio Drama Mode'}
+              {projectFormat === 'novel' && '📖 Prose / Novel Mode'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleAutoContinueScene}
+            disabled={isGenerating}
+            className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 text-xs font-semibold rounded-lg transition shadow-md cursor-pointer disabled:cursor-not-allowed"
+          >
+            {isGenerating ? (
+              <>
+                <svg
+                  className="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-slate-950"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                <span>Generating Beats...</span>
+              </>
+            ) : (
+              <>
+                <span>✨ Auto-Continue Scene</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* FORMAT-SPECIFIC TOOLBAR */}
+        <div className="flex items-center gap-1.5 mb-3 p-1.5 bg-slate-900 border border-slate-800 rounded-lg">
+          {projectFormat === 'screenplay' && (
+            <>
+              <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
+                FORMAT:
+              </span>
+              <button
+                type="button"
+                onClick={() => addBlockToActiveScene('SCENE_HEADING', 'INT. ')}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition cursor-pointer"
+              >
+                + INT.
+              </button>
+              <button
+                type="button"
+                onClick={() => addBlockToActiveScene('SCENE_HEADING', 'EXT. ')}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition cursor-pointer"
+              >
+                + EXT.
+              </button>
+              <button
+                type="button"
+                onClick={() => addBlockToActiveScene('CHARACTER', '')}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-medium rounded text-xs transition cursor-pointer"
+              >
+                + Character Cue
+              </button>
+              <button
+                type="button"
+                onClick={() => addBlockToActiveScene('PARENTHETICAL', '(')}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded text-xs transition cursor-pointer"
+              >
+                + (Parenthetical)
+              </button>
+            </>
+          )}
+
+          {projectFormat === 'audio_drama' && (
+            <>
+              <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
+                Audio Cues
+              </span>
+              <button
+                type="button"
+                onClick={() => insertFormattingTag('[SFX: ', 'Thunder rumble in distance]')}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded font-mono text-xs"
+              >
+                + [SFX]
+              </button>
+              <button
+                type="button"
+                onClick={() => insertFormattingTag('[MUSIC: ', 'Low tense synth pad builds]')}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded font-mono text-xs"
+              >
+                + [MUSIC]
+              </button>
+            </>
+          )}
+
+          {projectFormat === 'novel' && (
+            <>
+              <span className="text-slate-500 px-2 font-mono text-[10px] uppercase tracking-wider">
+                Prose
+              </span>
+              <button
+                type="button"
+                onClick={() => insertFormattingTag('\n***\n', '')}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs"
+              >
+                + Scene Break (***)
+              </button>
+            </>
+          )}
+        </div>
+
+        <ScreenplayEditor
+          blocks={getActiveBlocks()}
+          onChange={handleUpdateActiveBlocks}
+        />
+      </div>
+    </main>
+
+    {/* RIGHT SIDEBAR: Scene Storyboard Visualizer */}
+    <SceneVisualizer
+      sceneTitle={activeScene?.title || 'Current Scene'}
+      blocks={getActiveBlocks()}
+      userTier="pro"
+    />
+  </div>
+);
 }
