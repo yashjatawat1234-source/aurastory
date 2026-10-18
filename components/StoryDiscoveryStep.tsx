@@ -26,7 +26,7 @@ export const StoryDiscoveryStep: React.FC<StoryDiscoveryStepProps> = ({
   const [nudgeOptions, setNudgeOptions] = useState<Record<string, string[]>>({});
   const [nudgeLoading, setNudgeLoading] = useState<Record<string, boolean>>({});
 
-  // Initialize Gemini API
+  // Initialize Gemini API with type casting for Vite
   const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
   const genAI = new GoogleGenerativeAI(apiKey);
 
@@ -39,7 +39,6 @@ export const StoryDiscoveryStep: React.FC<StoryDiscoveryStepProps> = ({
     const userPremise = concept || localStorage.getItem('aurastory_concept') || '';
 
     if (!userPremise.trim()) {
-      // Fallback default questions if no concept exists
       setQuestions([
         {
           id: 'protagonist',
@@ -113,7 +112,6 @@ Return JSON strictly in this array format without markdown code blocks:
       setQuestions(parsedQuestions);
     } catch (err) {
       console.error('Failed to generate custom questions:', err);
-      // Fallback questions on API error
       setQuestions([
         {
           id: 'protagonist',
@@ -145,7 +143,10 @@ Return JSON strictly in this array format without markdown code blocks:
     }
   };
 
-  const fetchNudgeOptions = async (qId: string, qContext: string) => {
+  // Prevent form submission & auth modal popup on click
+  const fetchNudgeOptions = async (e: React.MouseEvent, qId: string, qContext: string) => {
+    e.preventDefault();
+    e.stopPropagation();
     setNudgeLoading((prev) => ({ ...prev, [qId]: true }));
     const userPremise = concept || localStorage.getItem('aurastory_concept') || '';
 
@@ -177,7 +178,9 @@ Return strictly a JSON array of 3 string items without markdown brackets:
     }
   };
 
-  const handleSelectOption = (qId: string, optionText: string) => {
+  const handleSelectOption = (e: React.MouseEvent, qId: string, optionText: string) => {
+    e.preventDefault();
+    e.stopPropagation();
     setAnswers((prev) => ({ ...prev, [qId]: optionText }));
     setActiveNudgeId(null);
   };
@@ -224,16 +227,14 @@ Return strictly a JSON array of 3 string items without markdown brackets:
               <div className="flex items-center justify-between pt-1">
                 <button
                   type="button"
-                  onClick={() => fetchNudgeOptions(q.id, q.context)}
+                  onClick={(e) => fetchNudgeOptions(e, q.id, q.context)}
                   disabled={nudgeLoading[q.id]}
                   className="inline-flex items-center gap-1.5 text-xs text-teal-400 hover:text-teal-300 font-medium transition-colors disabled:opacity-50"
                 >
                   {nudgeLoading[q.id] ? (
                     <span>Generating direction...</span>
                   ) : (
-                    <>
-                      <span>✨ Stuck? Get 3 Grounded Options</span>
-                    </>
+                    <span>✨ Stuck? Get 3 Grounded Options</span>
                   )}
                 </button>
               </div>
@@ -248,7 +249,7 @@ Return strictly a JSON array of 3 string items without markdown brackets:
                     <button
                       key={idx}
                       type="button"
-                      onClick={() => handleSelectOption(q.id, option)}
+                      onClick={(e) => handleSelectOption(e, q.id, option)}
                       className="w-full text-left text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white p-2.5 rounded border border-slate-800/80 transition-colors"
                     >
                       💡 {option}
