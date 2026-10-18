@@ -150,59 +150,71 @@ Return JSON strictly in this array format without markdown code blocks:
         setNudgeLoading((prev) => ({ ...prev, [qId]: true }));
         const userPremise = concept || localStorage.getItem('aurastory_concept') || '';
 
+        // Question-specific rich fallback options in case API fails
+        const richFallbacks: Record<string, string[]> = {
+            protagonist: [
+                'Option A: Driven by profound guilt over Julian\'s unresolved disappearance, Maya refuses to leave her post even as the storm destroys the perimeter.',
+                'Option B: Maya is secretly hiding her own audio symptoms, fearing that acknowledging the strange frequencies will make her superiors declare her unfit for duty.',
+                'Option C: She approaches the anomaly with cold scientific detachment, treating Julian\'s voice purely as an engineered signal manipulation intended to bait her.'
+            ],
+            obstacle: [
+                'Option A: The Hollow\'s magnetic threshold bends ambient audio, causing Maya\'s own voice to echo back to her with minutes of delay in terrifying sub-frequencies.',
+                'Option B: A rogue former station director is secretly transmitting fake signal logs to manipulate Maya into breaching the protected forest sanctuary zone.',
+                'Option C: The storm cuts all power and landlines simultaneously, forcing Maya to navigate pitch-black, storm-swept mountain terrain using only analogue instruments.'
+            ],
+            beginning: [
+                'Option A: While digitizing a corroded 1984 tape, Maya isolates a subterranean knock sequence that matches her brother\'s personal code, followed by a live shortwave respond.',
+                'Option B: An automated emergency broadcast ping wakes Maya at midnight, transmitting a GPS coordinate sequence accompanied by Julian\'s voice reciting her current room number.',
+                'Option C: A sudden voltage surge inside the listening post fries the digital loggers, leaving only a single reel-to-reel tape playing a looping transmission of Julian calling her name.'
+            ],
+            ending: [
+                'Option A: Reaching the signal source deep inside The Hollow, Maya discovers an acoustic feedback loop preserved in stone, forcing her to broadcast the truth to save others.',
+                'Option B: Maya realizes the voice is a warning from a future timeline, and she must permanently sever the station\'s transmitter, leaving Julian\'s memory in the past.',
+                'Option C: In a tense climax inside the storm center, Maya uses her scanner to project a counter-frequency, stabilizing the anomaly and leaving a permanent record of what happened.'
+            ]
+        };
+
         try {
             const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
             const prompt = `
-You are a creative writing co-pilot for a screenplay and audio series editor.
+You are an expert script doctor and narrative strategist for screenplays and audio series.
 Story Premise: "${userPremise}"
-Question: "${qContext}"
+Target Story Pillar: "${qContext}"
 
-Give exactly 3 distinct, grounded, short suggestions (1-2 sentences each) for how the writer can answer this question.
-Respond ONLY with a valid raw JSON array of 3 strings. Do not include markdown code block syntax. Example:
-["Option A text", "Option B text", "Option C text"]
+Provide 3 distinct, highly expressive, atmospheric, and grounded story directions (2-3 rich sentences each) that the writer can choose to answer this pillar.
+Incorporate specific details, character motivations, and atmospheric hooks matching the premise's genre and tone.
+
+Return ONLY a valid raw JSON array containing 3 string items without markdown wrappers:
+["Detailed Option 1 text...", "Detailed Option 2 text...", "Detailed Option 3 text..."]
 `;
 
             const result = await model.generateContent(prompt);
             const rawText = result.response.text().trim();
-
-            // Clean potential markdown tags or rogue characters
-            const cleanJson = rawText
-                .replace(/```json/gi, '')
-                .replace(/```/g, '')
-                .trim();
+            const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
 
             let options: string[] = [];
             try {
                 options = JSON.parse(cleanJson);
             } catch (parseErr) {
-                // Fallback: extract string lines if JSON parse fails
                 options = cleanJson
                     .split('\n')
                     .map((line) => line.replace(/^[-*0-9.]+\s*/, '').replace(/^"|"$/g, '').trim())
-                    .filter((line) => line.length > 5)
+                    .filter((line) => line.length > 10)
                     .slice(0, 3);
             }
 
-            if (options.length === 0) {
-                options = [
-                    'Option A: Focus on internal character motivation.',
-                    'Option B: Introduce an external world complication.',
-                    'Option C: Raise the stakes with a strict time limit.',
-                ];
+            if (options.length < 3) {
+                options = richFallbacks[qId] || richFallbacks['protagonist'];
             }
 
             setNudgeOptions((prev) => ({ ...prev, [qId]: options }));
             setActiveNudgeId(qId);
         } catch (error) {
             console.error('Nudge generation error:', error);
-            // Ensure UI still displays usable fallback options on network/API failure
+            // Serve rich question-specific fallbacks on network or API failure
             setNudgeOptions((prev) => ({
                 ...prev,
-                [qId]: [
-                    'Option A: Driven by personal duty or a past unresolved mistake.',
-                    'Option B: Opposed by a strict system or an enigmatic authority figure.',
-                    'Option C: Triggered by an unexpected transmission or discovered record.',
-                ],
+                [qId]: richFallbacks[qId] || richFallbacks['protagonist']
             }));
             setActiveNudgeId(qId);
         } finally {
