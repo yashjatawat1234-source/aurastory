@@ -148,73 +148,58 @@ Return JSON strictly in this array format without markdown code blocks:
         e.preventDefault();
         e.stopPropagation();
         setNudgeLoading((prev) => ({ ...prev, [qId]: true }));
-        const userPremise = concept || localStorage.getItem('aurastory_concept') || '';
 
-        // Question-specific rich fallback options in case API fails
-        const richFallbacks: Record<string, string[]> = {
-            protagonist: [
-                'Option A: Driven by profound guilt over Julian\'s unresolved disappearance, Maya refuses to leave her post even as the storm destroys the perimeter.',
-                'Option B: Maya is secretly hiding her own audio symptoms, fearing that acknowledging the strange frequencies will make her superiors declare her unfit for duty.',
-                'Option C: She approaches the anomaly with cold scientific detachment, treating Julian\'s voice purely as an engineered signal manipulation intended to bait her.'
-            ],
-            obstacle: [
-                'Option A: The Hollow\'s magnetic threshold bends ambient audio, causing Maya\'s own voice to echo back to her with minutes of delay in terrifying sub-frequencies.',
-                'Option B: A rogue former station director is secretly transmitting fake signal logs to manipulate Maya into breaching the protected forest sanctuary zone.',
-                'Option C: The storm cuts all power and landlines simultaneously, forcing Maya to navigate pitch-black, storm-swept mountain terrain using only analogue instruments.'
-            ],
-            beginning: [
-                'Option A: While digitizing a corroded 1984 tape, Maya isolates a subterranean knock sequence that matches her brother\'s personal code, followed by a live shortwave respond.',
-                'Option B: An automated emergency broadcast ping wakes Maya at midnight, transmitting a GPS coordinate sequence accompanied by Julian\'s voice reciting her current room number.',
-                'Option C: A sudden voltage surge inside the listening post fries the digital loggers, leaving only a single reel-to-reel tape playing a looping transmission of Julian calling her name.'
-            ],
-            ending: [
-                'Option A: Reaching the signal source deep inside The Hollow, Maya discovers an acoustic feedback loop preserved in stone, forcing her to broadcast the truth to save others.',
-                'Option B: Maya realizes the voice is a warning from a future timeline, and she must permanently sever the station\'s transmitter, leaving Julian\'s memory in the past.',
-                'Option C: In a tense climax inside the storm center, Maya uses her scanner to project a counter-frequency, stabilizing the anomaly and leaving a permanent record of what happened.'
-            ]
-        };
+        const userPremise = concept || localStorage.getItem('aurastory_concept') || '';
 
         try {
             const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
             const prompt = `
-You are an expert script doctor and narrative strategist for screenplays and audio series.
-Story Premise: "${userPremise}"
-Target Story Pillar: "${qContext}"
+You are an expert story consultant and creative co-writer for film, audio dramas, and novels.
+The writer provided this story premise:
+"${userPremise}"
 
-Provide 3 distinct, highly expressive, atmospheric, and grounded story directions (2-3 rich sentences each) that the writer can choose to answer this pillar.
-Incorporate specific details, character motivations, and atmospheric hooks matching the premise's genre and tone.
+They are currently trying to flesh out this specific narrative question:
+"${qContext}"
 
-Return ONLY a valid raw JSON array containing 3 string items without markdown wrappers:
-["Detailed Option 1 text...", "Detailed Option 2 text...", "Detailed Option 3 text..."]
+As a supportive co-writer, give 3 distinct, deeply evocative, and grounded narrative paths for how they can develop this specific part of their story.
+- Base every single option strictly on the unique characters, setting, atmosphere, and conflict mentioned in the premise.
+- Write 2-3 expressive sentences per option.
+- DO NOT give generic advice. Provide concrete dramatic choices.
+
+Return ONLY a raw JSON array of 3 strings. Example:
+["Option 1 description...", "Option 2 description...", "Option 3 description..."]
 `;
 
             const result = await model.generateContent(prompt);
             const rawText = result.response.text().trim();
-            const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
 
-            let options: string[] = [];
-            try {
-                options = JSON.parse(cleanJson);
-            } catch (parseErr) {
-                options = cleanJson
-                    .split('\n')
-                    .map((line) => line.replace(/^[-*0-9.]+\s*/, '').replace(/^"|"$/g, '').trim())
-                    .filter((line) => line.length > 10)
-                    .slice(0, 3);
+            // Clean up markdown block syntax if present
+            const cleanedText = rawText
+                .replace(/^```json\s*/i, '')
+                .replace(/^```\s*/i, '')
+                .replace(/\s*```$/i, '')
+                .trim();
+
+            const parsedOptions: string[] = JSON.parse(cleanedText);
+
+            if (Array.isArray(parsedOptions) && parsedOptions.length > 0) {
+                setNudgeOptions((prev) => ({ ...prev, [qId]: parsedOptions }));
+                setActiveNudgeId(qId);
+            } else {
+                throw new Error('Invalid options array format');
             }
-
-            if (options.length < 3) {
-                options = richFallbacks[qId] || richFallbacks['protagonist'];
-            }
-
-            setNudgeOptions((prev) => ({ ...prev, [qId]: options }));
-            setActiveNudgeId(qId);
         } catch (error) {
-            console.error('Nudge generation error:', error);
-            // Serve rich question-specific fallbacks on network or API failure
+            console.error('Co-writer API error:', error);
+
+            // If API fails, display an explicit debug note so you know why it didn't call Gemini directly
             setNudgeOptions((prev) => ({
                 ...prev,
-                [qId]: richFallbacks[qId] || richFallbacks['protagonist']
+                [qId]: [
+                    `💡 [Co-Writer Note]: Please check your VITE_GEMINI_API_KEY environment variable in Vercel to get live personalized suggestions for this premise.`,
+                    `💡 Option 1: Focus on the protagonist's main emotional vulnerability and how the central mystery forces them to face it.`,
+                    `💡 Option 2: Introduce a local rule or environmental limitation that raises the immediate pressure.`
+                ],
             }));
             setActiveNudgeId(qId);
         } finally {
