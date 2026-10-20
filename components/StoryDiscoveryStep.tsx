@@ -25,37 +25,9 @@ export const StoryDiscoveryStep: React.FC<StoryDiscoveryStepProps> = ({
   const [nudgeOptions, setNudgeOptions] = useState<Record<string, string[]>>({});
   const [nudgeLoading, setNudgeLoading] = useState<Record<string, boolean>>({});
 
-  const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
-
   useEffect(() => {
     generateCustomQuestions();
   }, [concept]);
-
-  // Direct REST API Call Helper to bypass SDK Key Restrictions
-  const callGeminiRestApi = async (promptText: string): Promise<string> => {
-    if (!apiKey) {
-      throw new Error('VITE_GEMINI_API_KEY is missing');
-    }
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: promptText }] }],
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || `API HTTP error ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  };
 
   const generateCustomQuestions = async () => {
     setLoading(true);
@@ -68,47 +40,24 @@ export const StoryDiscoveryStep: React.FC<StoryDiscoveryStepProps> = ({
     }
 
     try {
-      const prompt = `
-You are a story consultant and script editor.
-Analyze this story premise:
-"${userPremise}"
+      const response = await fetch('/api/nudge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          premise: userPremise,
+          task: 'generate_questions',
+        }),
+      });
 
-Generate 4 dynamic, highly specific story discovery questions tailored to this premise.
-Return ONLY raw JSON array format without markdown wrappers:
-[
-  {
-    "id": "protagonist",
-    "label": "1. Protagonist & Internal Flaw",
-    "context": "Question about the character based on the premise",
-    "placeholder": "Grounded answer idea..."
-  },
-  {
-    "id": "obstacle",
-    "label": "2. Setting Rules & Antagonistic Force",
-    "context": "Question about the world or main obstacle",
-    "placeholder": "Grounded answer idea..."
-  },
-  {
-    "id": "beginning",
-    "label": "3. The Beginning & Status Quo Break",
-    "context": "Question about how the story starts",
-    "placeholder": "Grounded answer idea..."
-  },
-  {
-    "id": "ending",
-    "label": "4. The Climax & Resolution (The Ending)",
-    "context": "Question about the vision for the climax",
-    "placeholder": "Grounded answer idea..."
-  }
-]
-`;
+      const data = await response.json();
 
-      const rawResponse = await callGeminiRestApi(prompt);
-      const cleanJson = rawResponse.replace(/```json/gi, '').replace(/```/g, '').trim();
-      const parsedQuestions: QuestionItem[] = JSON.parse(cleanJson);
-      setQuestions(parsedQuestions);
+      if (response.ok && Array.isArray(data.result)) {
+        setQuestions(data.result);
+      } else {
+        setQuestions(getFallbackQuestions());
+      }
     } catch (err) {
-      console.error('Failed to generate dynamic questions via REST:', err);
+      console.error('Failed to fetch dynamic questions:', err);
       setQuestions(getFallbackQuestions());
     } finally {
       setLoading(false);
@@ -123,42 +72,31 @@ Return ONLY raw JSON array format without markdown wrappers:
     const userPremise = concept || localStorage.getItem('aurastory_concept') || '';
 
     try {
-      const prompt = `
-You are a creative co-writer and narrative strategist for screenplays and audio series.
-Story Premise: "${userPremise}"
-Target Story Question: "${qContext}"
+      const response = await fetch('/api/nudge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          premise: userPremise,
+          questionContext: qContext,
+          task: 'generate_nudge',
+        }),
+      });
 
-Give 3 distinct, deeply evocative, grounded narrative choices (2-3 sentences each) for how the writer can answer this question.
-Incorporate specific details, character motivations, and atmospheric hooks from this premise.
+      const data = await response.json();
 
-Return ONLY a raw JSON array of 3 strings:
-["Option 1 text...", "Option 2 text...", "Option 3 text..."]
-`;
+      if (!response.ok) {
+        throw new Error(data.error || 'Server nudge error');
+      }
 
-      const rawResponse = await callGeminiRestApi(prompt);
-      const cleanJson = rawResponse.replace(/```json/gi, '').replace(/```/g, '').trim();
-      const options: string[] = JSON.parse(cleanJson);
-
-      if (Array.isArray(options) && options.length > 0) {
-        setNudgeOptions((prev) => ({ ...prev, [qId]: options }));
+      if (Array.isArray(data.result) && data.result.length > 0) {
+        setNudgeOptions((prev) => ({ ...prev, [qId]: data.result }));
         setActiveNudgeId(qId);
       } else {
-        throw new Error('Invalid JSON array received');
+        throw new Error('Malformed nudge array');
       }
     } catch (error) {
-      console.error('Co-writer REST error:', error);
-
-      // Context-aware fallback using active premise lead
-      const activeName = userPremise.trim().split(/\s+/)[0] || 'The protagonist';
-      setNudgeOptions((prev) => ({
-        ...prev,
-        [qId]: [
-          `Option A: Driven by deep personal stakes, ${activeName} pursues the anomaly into restricted spaces despite immediate warnings.`,
-          `Option B: ${activeName} conceals critical evidence from nearby authorities to investigate the repeating signal alone.`,
-          `Option C: Using improvised tools, ${activeName} attempts to stabilize the frequency before the time limit expires.`
-        ],
-      }));
-      setActiveNudgeId(qId);
+      console.error('Co-writer nudge error:', error);
+      setActiveNudgeId(null);
     } finally {
       setNudgeLoading((prev) => ({ ...prev, [qId]: false }));
     }
