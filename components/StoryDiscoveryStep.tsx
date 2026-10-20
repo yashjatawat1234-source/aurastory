@@ -40,7 +40,7 @@ export const StoryDiscoveryStep: React.FC<StoryDiscoveryStepProps> = ({
     }
 
     try {
-      const response = await fetch('/api/nudge.js', {
+      const response = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -72,7 +72,7 @@ export const StoryDiscoveryStep: React.FC<StoryDiscoveryStepProps> = ({
     const userPremise = concept || localStorage.getItem('aurastory_concept') || '';
 
     try {
-      const response = await fetch('/api/nudge.js', {
+      const response = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
