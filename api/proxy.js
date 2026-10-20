@@ -1,46 +1,90 @@
 export default async function handler(req, res) {
-  const supabaseUrl = 'https://yhbhgvrwuhxtebvqxggi.supabase.co';
-  
-  // Extract target path
-  const path = req.url.replace(/^\/api\/proxy/, '');
-  const targetUrl = `${supabaseUrl}${path}`;
+  // 1. Intercept Gemini co-writer requests
+  if (req.body && req.body.task && (req.body.task === 'generate_questions' || req.body.task === 'generate_nudge')) {
+    const { premise, questionContext, task } = req.body;
+    const apiKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
-  try {
-    // Only forward essential safe headers to prevent TLS handshake failure
-    const forwardHeaders = {
-      'host': 'yhbhgvrwuhxtebvqxggi.supabase.co',
-      'accept': req.headers['accept'] || '*/*',
-      'user-agent': 'Vercel-Proxy',
-    };
-
-    if (req.headers['authorization']) forwardHeaders['authorization'] = req.headers['authorization'];
-    if (req.headers['apikey']) forwardHeaders['apikey'] = req.headers['apikey'];
-    if (req.headers['content-type']) forwardHeaders['content-type'] = req.headers['content-type'];
-
-    const fetchOptions = {
-      method: req.method,
-      headers: forwardHeaders,
-      redirect: 'manual', // DO NOT auto-follow; let Supabase send 302 directly to browser
-    };
-
-    if (!['GET', 'HEAD'].includes(req.method) && req.body) {
-      fetchOptions.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    if (!apiKey) {
+      return res.status(500).json({ error: 'Gemini API key missing on server' });
     }
 
-    const response = await fetch(targetUrl, fetchOptions);
+    let prompt = '';
+    if (task === 'generate_questions') {
+      prompt = `
+You are an expert story consultant and script editor.
+Analyze this story premise:
+"${premise}"
 
-    // Pass the Google OAuth redirect back to the user's browser
-    const location = response.headers.get('location');
-    if (location) {
-      return res.redirect(response.status || 302, location);
-    }
-
-    const data = await response.arrayBuffer();
-    const contentType = response.headers.get('content-type');
-    if (contentType) res.setHeader('content-type', contentType);
-
-    res.status(response.status).send(Buffer.from(data));
-  } catch (error) {
-    res.status(500).json({ error: 'Proxy Request Failed', details: error.message });
+Generate 4 dynamic, highly specific story discovery questions tailored directly to the unique characters, setting, and stakes in this premise.
+Return ONLY raw JSON array format without markdown code block syntax:
+[
+  {
+    "id": "protagonist",
+    "label": "1. Protagonist & Internal Flaw",
+    "context": "Specific question about the main lead",
+    "placeholder": "Idea for their motivation..."
+  },
+  {
+    "id": "obstacle",
+    "label": "2. Setting Rules & Central Conflict",
+    "context": "Specific question about the world or obstacle",
+    "placeholder": "Idea for the main conflict..."
+  },
+  {
+    "id": "beginning",
+    "label": "3. The Beginning & Inciting Incident",
+    "context": "Specific question about how the mystery kicks off",
+    "placeholder": "Idea for the opening spark..."
+  },
+  {
+    "id": "ending",
+    "label": "4. Target Resolution & Climax",
+    "context": "Specific question about the climax",
+    "placeholder": "Idea for the resolution..."
   }
+]
+`;
+    } else {
+      prompt = `
+You are an expert narrative strategist and creative co-writer for screenplays and fiction.
+Story Premise: "${premise}"
+Target Question: "${questionContext}"
+
+Provide 3 distinct, deeply evocative, grounded narrative choices (2-3 rich sentences each) for how the writer can answer this question.
+Base every option strictly on the unique characters, setting, atmosphere, and conflict in the premise.
+
+Return ONLY a raw JSON array of 3 strings without markdown wrappers:
+["Option 1 text...", "Option 2 text...", "Option 3 text..."]
+`;
+    }
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: data.error?.message || 'Gemini API Error' });
+      }
+
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+      return res.status(200).json({ result: JSON.parse(cleanJson) });
+    } catch (err) {
+      return res.status(500).json({ error: err.message || 'Server error processing co-writer request' });
+    }
+  }
+
+  // 2. Fallback execution for other proxy routes
+  return res.status(400).json({ error: 'Invalid request task or target route' });
 }
