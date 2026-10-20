@@ -13,6 +13,10 @@
       "destination": "/api/proxy"
     },
     {
+      "source": "/api/nudge",
+      "destination": "/api/nudge.js"
+    },
+    {
       "source": "/((?!api/.*).*)",
       "destination": "/index.html"
     }
