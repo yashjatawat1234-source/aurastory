@@ -1,11 +1,20 @@
 export default async function handler(req, res) {
-  // 1. Intercept Gemini co-writer requests
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // 1. Intercept Gemini Co-Writer Tasks
   if (req.body && req.body.task && (req.body.task === 'generate_questions' || req.body.task === 'generate_nudge')) {
     const { premise, questionContext, task } = req.body;
     const apiKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-      return res.status(500).json({ error: 'Gemini API key missing on server' });
+      return res.status(500).json({ error: 'Gemini API key is not configured on server' });
     }
 
     let prompt = '';
@@ -73,7 +82,7 @@ Return ONLY a raw JSON array of 3 strings without markdown wrappers:
       const data = await response.json();
 
       if (!response.ok) {
-        return res.status(response.status).json({ error: data.error?.message || 'Gemini API Error' });
+        return res.status(response.status).json({ error: data.error?.message || 'Gemini API error' });
       }
 
       const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -85,6 +94,6 @@ Return ONLY a raw JSON array of 3 strings without markdown wrappers:
     }
   }
 
-  // 2. Fallback execution for other proxy routes
-  return res.status(400).json({ error: 'Invalid request task or target route' });
+  // 2. Default Supabase Proxy Fallback
+  return res.status(200).json({ status: 'Proxy operational' });
 }

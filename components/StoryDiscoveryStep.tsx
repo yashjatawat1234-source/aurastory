@@ -40,7 +40,7 @@ export const StoryDiscoveryStep: React.FC<StoryDiscoveryStepProps> = ({
     }
 
     try {
-      const response = await fetch('/api/proxy', {
+      const response = await fetch('/api/proxy.js', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -72,7 +72,7 @@ export const StoryDiscoveryStep: React.FC<StoryDiscoveryStepProps> = ({
     const userPremise = concept || localStorage.getItem('aurastory_concept') || '';
 
     try {
-      const response = await fetch('/api/proxy', {
+      const response = await fetch('/api/proxy.js', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -85,7 +85,7 @@ export const StoryDiscoveryStep: React.FC<StoryDiscoveryStepProps> = ({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || `Server responded with ${response.status}`);
+        throw new Error(data.error || `Server responded with status ${response.status}`);
       }
 
       if (Array.isArray(data.result) && data.result.length > 0) {
