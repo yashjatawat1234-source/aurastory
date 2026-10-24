@@ -1,30 +1,24 @@
 {
-  "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "api/proxy.js",
-      "use": "@vercel/node"
+      "source": "/api/proxy",
+      "destination": "/api/proxy.js"
     },
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/proxy",
-      "dest": "/api/proxy.js"
+      "source": "/auth/:path*",
+      "destination": "/api/proxy.js"
     },
     {
-      "src": "/api/nudge",
-      "dest": "/api/proxy.js"
+      "source": "/rest/:path*",
+      "destination": "/api/proxy.js"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/storage/:path*",
+      "destination": "/api/proxy.js"
+    },
+    {
+      "source": "/((?!api/|assets/|favicon.ico).*)",
+      "destination": "/index.html"
     }
   ]
 }
