@@ -1,20 +1,26 @@
 {
+  "functions": {
+    "api/*.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
   "rewrites": [
     {
+      "source": "/api/proxy",
+      "destination": "/api/proxy.js"
+    },
+    {
       "source": "/auth/:path*",
-      "destination": "/api/proxy"
+      "destination": "/api/proxy.js"
     },
     {
       "source": "/rest/:path*",
-      "destination": "/api/proxy"
+      "destination": "/api/proxy.js"
     },
     {
       "source": "/storage/:path*",
-      "destination": "/api/proxy"
-    },
-    {
-      "source": "/api/nudge",
-      "destination": "/api/nudge.js"
+      "destination": "/api/proxy.js"
     },
     {
       "source": "/((?!api/.*).*)",
