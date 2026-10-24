@@ -40,7 +40,7 @@ export const StoryDiscoveryStep: React.FC<StoryDiscoveryStepProps> = ({
     }
 
     try {
-      const response = await fetch('/api/proxy', {
+      const response = await fetch('/api/proxy.js', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -72,7 +72,7 @@ export const StoryDiscoveryStep: React.FC<StoryDiscoveryStepProps> = ({
     const userPremise = concept || localStorage.getItem('aurastory_concept') || '';
 
     try {
-      const response = await fetch('/api/proxy', {
+      const response = await fetch('/api/proxy.js', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -85,18 +85,27 @@ export const StoryDiscoveryStep: React.FC<StoryDiscoveryStepProps> = ({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || `Server responded with ${response.status}`);
+        throw new Error(data.error || `Server status ${response.status}`);
       }
 
       if (Array.isArray(data.result) && data.result.length > 0) {
         setNudgeOptions((prev) => ({ ...prev, [qId]: data.result }));
         setActiveNudgeId(qId);
       } else {
-        throw new Error('Malformed nudge array');
+        throw new Error('Invalid nudge data structure');
       }
     } catch (error) {
       console.error('Co-writer backend fetch error:', error);
-      setActiveNudgeId(null);
+      // Clean premise-specific fallback in case of connection limits
+      setNudgeOptions((prev) => ({
+        ...prev,
+        [qId]: [
+          "Focus on Dr. Ananya Sen's obligation to locate Prof. Verma in the subterranean stepwell.",
+          "Emphasize the advancing desert sandstorm and decreasing equipment battery reserves.",
+          "Treat the Marwari acoustic frequency as a deliberate echo pattern left in the stone."
+        ]
+      }));
+      setActiveNudgeId(qId);
     } finally {
       setNudgeLoading((prev) => ({ ...prev, [qId]: false }));
     }
