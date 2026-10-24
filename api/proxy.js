@@ -1,14 +1,12 @@
 export default async function handler(req, res) {
-  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, apikey, authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // Parse body if received as string
   let body = req.body;
   if (typeof body === 'string') {
     try {
@@ -18,7 +16,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // 1. Intercept Gemini Co-Writer Tasks
   if (body && body.task && (body.task === 'generate_questions' || body.task === 'generate_nudge')) {
     const { premise, questionContext, task } = body;
     const apiKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
@@ -78,7 +75,7 @@ Return ONLY a raw JSON array of 3 strings without markdown wrappers:
     }
 
     try {
-      const geminiRes = await fetch(
+      const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
         {
           method: 'POST',
@@ -89,10 +86,10 @@ Return ONLY a raw JSON array of 3 strings without markdown wrappers:
         }
       );
 
-      const data = await geminiRes.json();
+      const data = await response.json();
 
-      if (!geminiRes.ok) {
-        return res.status(geminiRes.status).json({ error: data.error?.message || 'Gemini API Error' });
+      if (!response.ok) {
+        return res.status(response.status).json({ error: data.error?.message || 'Gemini API Error' });
       }
 
       const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -104,6 +101,5 @@ Return ONLY a raw JSON array of 3 strings without markdown wrappers:
     }
   }
 
-  // 2. Default Fallback
-  return res.status(200).json({ status: 'Proxy backend active' });
+  return res.status(200).json({ status: 'Proxy operational' });
 }

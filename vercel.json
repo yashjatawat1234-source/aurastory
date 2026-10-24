@@ -1,30 +1,30 @@
 {
-  "functions": {
-    "api/*.js": {
-      "memory": 1024,
-      "maxDuration": 10
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/proxy.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     }
-  },
-  "rewrites": [
+  ],
+  "routes": [
     {
-      "source": "/api/proxy",
-      "destination": "/api/proxy.js"
+      "src": "/api/proxy",
+      "dest": "/api/proxy.js"
     },
     {
-      "source": "/auth/:path*",
-      "destination": "/api/proxy.js"
+      "src": "/api/nudge",
+      "dest": "/api/proxy.js"
     },
     {
-      "source": "/rest/:path*",
-      "destination": "/api/proxy.js"
-    },
-    {
-      "source": "/storage/:path*",
-      "destination": "/api/proxy.js"
-    },
-    {
-      "source": "/((?!api/.*).*)",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
