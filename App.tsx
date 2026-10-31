@@ -398,10 +398,8 @@ export default function App() {
     if (isGenerating) return;
     setIsGenerating(true);
 
-    const currentBlocks = getActiveBlocks();
-    let newBlocks: ScriptBlock[] = [];
-
     try {
+      const currentBlocks = getActiveBlocks();
       const recentContext = currentBlocks
         .slice(-8)
         .map((b) => `${b.type}: ${b.text}`)
@@ -409,6 +407,7 @@ export default function App() {
 
       const prompt = `You are an expert screenplay writer co-authoring a scene.
 Continue the scene naturally by generating 3 to 4 logical, engaging screenplay blocks based on recent context.
+Write in the same language and script as the context.
 
 Scene Title: ${activeScene?.title || 'Current Scene'}
 Recent Context:
@@ -421,67 +420,22 @@ JSON Schema:
   { "type": "ACTION" | "CHARACTER" | "DIALOGUE" | "PARENTHETICAL", "text": "string" }
 ]`;
 
-      // 1. Call Vite backend proxy endpoint
-      const response = await fetch('/api/continue-scene', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const rawJsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (rawJsonText) {
-          const parsedBlocks = JSON.parse(rawJsonText);
-          newBlocks = parsedBlocks.map((item: any, idx: number) => ({
-            id: `${Date.now()}_${idx}`,
-            type: item.type || 'ACTION',
-            text: item.text || '',
-          }));
-        }
+      const rawJsonText = await askAI(prompt, true);
+      const parsed = JSON.parse(rawJsonText.replace(/```json|```/g, '').trim());
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new Error('The AI sent back something unexpected. Please try again.');
       }
-    } catch (error) {
-      console.warn('Proxy AI call offline/failed. Falling back to local engine.', error);
-    }
-
-    // 2. Fallback: Generate dynamic local beats if proxy didn't return blocks
-    if (!newBlocks || newBlocks.length === 0) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const beatVariations = [
-        [
-          { type: 'ACTION', text: 'A heavy steel door rattles against its hinges down the corridor.' },
-          { type: 'CHARACTER', text: 'ARIAN' },
-          { type: 'PARENTHETICAL', text: '(whispering)' },
-          { type: 'DIALOGUE', text: 'They know we entered the mainframe.' },
-        ],
-        [
-          { type: 'ACTION', text: 'Emergency lights flicker across the ceiling, casting long amber shadows.' },
-          { type: 'CHARACTER', text: 'MAYA' },
-          { type: 'DIALOGUE', text: 'Keep moving. We have less than two minutes before lockup.' },
-          { type: 'ACTION', text: 'She pulls a terminal drive from her jacket and connects it to the wall junction.' },
-        ],
-        [
-          { type: 'ACTION', text: 'The security console chirps as decrypted data streams across the monitor.' },
-          { type: 'CHARACTER', text: 'ARIAN' },
-          { type: 'DIALOGUE', text: 'Did you trace the signal origin?' },
-          { type: 'CHARACTER', text: 'MAYA' },
-          { type: 'DIALOGUE', text: 'It is coming from inside the building.' },
-        ],
-      ];
-
-      const beatIndex = currentBlocks.length % beatVariations.length;
-      const selectedBeat = beatVariations[beatIndex];
-
-      newBlocks = selectedBeat.map((item, idx) => ({
+      const newBlocks: ScriptBlock[] = parsed.map((item: any, idx: number) => ({
         id: `${Date.now()}_${idx}`,
-        type: item.type as any,
-        text: item.text,
+        type: item.type || 'ACTION',
+        text: item.text || '',
       }));
+      handleUpdateActiveBlocks([...currentBlocks, ...newBlocks]);
+    } catch (error: any) {
+      alert(`Auto-Continue Error: ${error.message || 'Something went wrong.'}`);
+    } finally {
+      setIsGenerating(false);
     }
-
-    handleUpdateActiveBlocks([...currentBlocks, ...newBlocks]);
-    setIsGenerating(false);
   };
   const [isScratchpadOpen, setIsScratchpadOpen] = useState<boolean>(false)
   const [isBibleOpen, setIsBibleOpen] = useState<boolean>(false)
@@ -509,90 +463,30 @@ JSON Schema:
     link.click()
     document.body.removeChild(link)
   }
-  const callGeminiAPI = async (promptText: string, cleanKey: string): Promise<string> => {
-    // Current active Gemini endpoints
-    const candidateModels = [
-      'gemini-3.8-flash',
-      'gemini-2.5-flash',
-      'gemini-2.5-pro'
-    ]
+  // Talks to YOUR server (/api/ai). The Gemini key never reaches the browser.
+  const askAI = async (prompt: string, asJson: boolean = false): Promise<string> => {
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+    if (!token) throw new Error('Please sign in to use the AI.')
 
-    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-    let lastErrorMessage = ''
-
-    for (const model of candidateModels) {
-      try {
-        let response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: promptText }] }],
-            }),
-          }
-        )
-
-        const data = await response.json()
-
-        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          return data.candidates[0].content.parts[0].text
-        }
-
-        const errorMsg = data.error?.message || `Status ${response.status}`
-
-        // Stop immediately ONLY if the issue is API key validity or quota limits
-        if (
-          response.status === 401 ||
-          response.status === 403 ||
-          errorMsg.toLowerCase().includes('key') ||
-          errorMsg.toLowerCase().includes('quota')
-        ) {
-          throw new Error(`[${model}] ${errorMsg}`)
-        }
-
-        // Pause and retry once if Google returns high demand (503 or 429)
-        if (response.status === 503 || response.status === 429) {
-          await delay(1200)
-          let retryRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: promptText }] }],
-              }),
-            }
-          )
-          let retryData = await retryRes.json()
-          if (retryRes.ok && retryData.candidates?.[0]?.content?.parts?.[0]?.text) {
-            return retryData.candidates[0].content.parts[0].text
-          }
-        }
-
-        lastErrorMessage = `[${model}] ${errorMsg}`
-      } catch (err: any) {
-        if (err.message?.startsWith('[')) throw err
-        lastErrorMessage = err.message || 'Network error.'
-      }
+    const response = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ prompt, json: asJson }),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok || !data.text) {
+      throw new Error(data.error || 'The AI could not answer right now. Please try again.')
     }
-
-    throw new Error(lastErrorMessage || 'All Gemini model endpoints failed.')
+    return data.text as string
+  }
+  const callGeminiAPI = async (promptText: string, _unused?: string): Promise<string> => {
+    return askAI(promptText)
   }
   const handleWhatIf = async () => {
     if (!whatIfPrompt || !whatIfPrompt.trim()) return
 
-    const cleanKey = (
-      apiKey ||
-      (import.meta as any).env?.VITE_GEMINI_API_KEY ||
-      localStorage.getItem('aurastory_gemini_key') ||
-      ''
-    ).trim()
-
-    if (!cleanKey) {
-      alert('Please enter your Gemini API Key in the top header field.')
-      return
-    }
+    const cleanKey = ''
 
     setIsGenerating(true)
 
@@ -639,17 +533,7 @@ TASK:
       return
     }
 
-    const cleanKey = (
-      apiKey ||
-      (import.meta as any).env?.VITE_GEMINI_API_KEY ||
-      localStorage.getItem('aurastory_gemini_key') ||
-      ''
-    ).trim()
-
-    if (!cleanKey) {
-      alert('Please enter your Gemini API Key in the top header field.')
-      return
-    }
+    const cleanKey = ''
 
     setIsGenerating(true)
 
@@ -683,49 +567,14 @@ DIRECTIVE:
     }
   }
   const handleGenerateAIContinuation = async () => {
-    if (!apiKey || !apiKey.trim()) {
-      alert('Please enter your Gemini API Key in the header field.')
-      return
-    }
-
     setIsGenerating(true)
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey.trim()}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: `Continue the following story scene naturally with 2-3 atmospheric paragraphs:\n\n${storyCanvas}`,
-                  },
-                ],
-              },
-            ],
-          }),
-        }
+      const generatedText = await askAI(
+        `Continue the following story scene naturally with 2-3 atmospheric paragraphs. Write in the same language and script as the scene.\n\n${storyCanvas.slice(-6000)}`
       )
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || `HTTP ${response.status} Error`)
-      }
-
-      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
-      if (generatedText) {
-        setStoryCanvas((prev) => `${prev}\n\n${generatedText.trim()}`)
-      } else {
-        alert('Gemini returned an empty response. Try clicking again.')
-      }
+      setStoryCanvas((prev) => `${prev}\n\n${generatedText.trim()}`)
     } catch (err: any) {
-      console.error('Gemini API Error:', err)
-      alert(`Generation Error: ${err.message || 'Failed to reach Gemini API'}`)
+      alert(`Generation Error: ${err.message || 'Failed to reach the AI'}`)
     } finally {
       setIsGenerating(false)
     }
@@ -784,9 +633,6 @@ DIRECTIVE:
     setStoryBible((prev) => prev.filter((_, index) => index !== indexToDelete))
   }
   // Gemini State
-  const [apiKey, setApiKey] = useState<string>(
-    (import.meta as any).env?.VITE_GEMINI_API_KEY || localStorage.getItem('aurastory_gemini_key') || ''
-  )
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
   const [whatIfInput, setWhatIfInput] = useState<string>('')
   const [whatIfBranches, setWhatIfBranches] = useState<string[]>([])
@@ -891,8 +737,9 @@ DIRECTIVE:
   }, [storyBible])
 
   useEffect(() => {
-    localStorage.setItem('aurastory_gemini_key', apiKey)
-  }, [apiKey])
+    // Clean up any old key saved in this browser by the previous version
+    localStorage.removeItem('aurastory_gemini_key')
+  }, [])
 
   const handleExportManuscript = () => {
     let fullText = `# AuraStory Compiled Manuscript\n\n`
@@ -941,14 +788,8 @@ DIRECTIVE:
     e.preventDefault()
     if (!whatIfInput.trim()) return
 
-    if (!apiKey || !apiKey.trim()) {
-      alert('Please enter your Gemini API Key in the top header field.')
-      return
-    }
-
     setIsGenerating(true)
     try {
-      const cleanKey = apiKey.trim()
       const promptText = `You are an elite creative writing mentor and master narrative strategist.
 
 WRITER'S SAMPLE CANVAS (ANALYZE THIS FOR STYLE, VOICE, VOCABULARY & RHYTHM):
@@ -971,23 +812,7 @@ Provide exactly 3 distinct numbered options (1., 2., 3.). Each option must be a 
 2. [Style-Matched Detailed Plot Branch 2]
 3. [Style-Matched Detailed Plot Branch 3]`
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${cleanKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: promptText }] }],
-          }),
-        }
-      )
-
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Failed to generate style-matched plot branches.')
-      }
-
-      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text
+      const generatedText = await askAI(promptText)
       if (generatedText) {
         const branches = generatedText
           .split(/\n(?=[1-3]\.\s*)/)
@@ -1254,16 +1079,6 @@ return (
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <input
-            type="password"
-            placeholder="Gemini API Key..."
-            value={apiKey}
-            onChange={(e) => {
-              setApiKey(e.target.value)
-              localStorage.setItem('aurastory_gemini_key', e.target.value)
-            }}
-            className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-44 transition-colors"
-          />
           <button
             onClick={handleExport}
             className="px-4 py-2 bg-blue-950 hover:bg-blue-900 text-blue-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
